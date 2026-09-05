@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/go-sphere/sphere-layout/internal/pkg/database/ent"
-	"github.com/go-sphere/sphere-layout/internal/pkg/database/ent/keyvaluestore"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/ent"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/ent/keyvaluestore"
 )
 
 func GetKeyValueStore[T any](ctx context.Context, client *ent.Client, key string) (*T, error) {

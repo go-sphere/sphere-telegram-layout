@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
-	dashv1 "github.com/go-sphere/sphere-layout/api/dash/v1"
-	"github.com/go-sphere/sphere-layout/internal/pkg/conv"
-	"github.com/go-sphere/sphere-layout/internal/pkg/database/ent/adminsession"
+	dashv1 "github.com/go-sphere/sphere-telegram-layout/api/dash/v1"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/conv"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/ent/adminsession"
 )
 
 var _ dashv1.AdminSessionServiceHTTPServer = (*Service)(nil)

@@ -3,9 +3,9 @@ package dao
 import (
 	"context"
 
-	"github.com/go-sphere/sphere-layout/internal/pkg/conv"
-	"github.com/go-sphere/sphere-layout/internal/pkg/database/ent"
-	"github.com/go-sphere/sphere-layout/internal/pkg/database/ent/admin"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/conv"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/ent"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/ent/admin"
 )
 
 func (d *Dao) GetAdmins(ctx context.Context, ids []int64) (map[int64]*ent.Admin, error) {

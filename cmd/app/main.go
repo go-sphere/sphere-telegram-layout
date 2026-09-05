@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/go-sphere/sphere-layout/internal/pkg/app"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/app"
 )
 
 func main() {

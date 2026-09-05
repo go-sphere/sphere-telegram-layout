@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/go-sphere/sphere-layout/internal/config"
-	"github.com/go-sphere/sphere-layout/internal/server/docs"
+	"github.com/go-sphere/sphere-telegram-layout/internal/config"
+	"github.com/go-sphere/sphere-telegram-layout/internal/server/docs"
 	"github.com/go-sphere/sphere/core/boot"
 )
 

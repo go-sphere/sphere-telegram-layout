@@ -3,7 +3,7 @@ package api
 import (
 	"context"
 
-	apiv1 "github.com/go-sphere/sphere-layout/api/api/v1"
+	apiv1 "github.com/go-sphere/sphere-telegram-layout/api/api/v1"
 )
 
 var _ apiv1.SystemServiceHTTPServer = (*Service)(nil)

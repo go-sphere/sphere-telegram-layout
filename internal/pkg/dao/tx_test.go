@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/go-sphere/sphere-layout/internal/pkg/database/client"
-	"github.com/go-sphere/sphere-layout/internal/pkg/database/ent"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/client"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/ent"
 )
 
 func TestTransactionPanicRollsBackAndRepanics(t *testing.T) {

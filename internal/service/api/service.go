@@ -1,8 +1,8 @@
 package api
 
 import (
-	"github.com/go-sphere/sphere-layout/internal/pkg/dao"
-	"github.com/go-sphere/sphere-layout/internal/pkg/render"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/dao"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/render"
 	"github.com/go-sphere/sphere/cache"
 	"github.com/go-sphere/sphere/server/auth/authorizer"
 	"github.com/go-sphere/sphere/server/auth/jwtauth"

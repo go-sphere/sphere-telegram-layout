@@ -5,13 +5,13 @@ import (
 
 	entgen "github.com/go-sphere/entc-extensions/entcrud"
 	"github.com/go-sphere/entc-extensions/entcrud/conf"
-	"github.com/go-sphere/sphere-layout/api/entpb"
-	sharedv1 "github.com/go-sphere/sphere-layout/api/shared/v1"
-	"github.com/go-sphere/sphere-layout/internal/pkg/database/ent"
-	"github.com/go-sphere/sphere-layout/internal/pkg/database/ent/admin"
-	"github.com/go-sphere/sphere-layout/internal/pkg/database/ent/adminsession"
-	"github.com/go-sphere/sphere-layout/internal/pkg/database/ent/keyvaluestore"
-	"github.com/go-sphere/sphere-layout/internal/pkg/database/ent/user"
+	"github.com/go-sphere/sphere-telegram-layout/api/entpb"
+	sharedv1 "github.com/go-sphere/sphere-telegram-layout/api/shared/v1"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/ent"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/ent/admin"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/ent/adminsession"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/ent/keyvaluestore"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/ent/user"
 )
 
 func main() {

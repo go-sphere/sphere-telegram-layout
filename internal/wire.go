@@ -1,11 +1,11 @@
 package internal
 
 import (
-	"github.com/go-sphere/sphere-layout/internal/biz"
-	"github.com/go-sphere/sphere-layout/internal/config"
-	"github.com/go-sphere/sphere-layout/internal/pkg"
-	"github.com/go-sphere/sphere-layout/internal/server"
-	"github.com/go-sphere/sphere-layout/internal/service"
+	"github.com/go-sphere/sphere-telegram-layout/internal/biz"
+	"github.com/go-sphere/sphere-telegram-layout/internal/config"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg"
+	"github.com/go-sphere/sphere-telegram-layout/internal/server"
+	"github.com/go-sphere/sphere-telegram-layout/internal/service"
 	"github.com/go-sphere/sphere/cache"
 	"github.com/go-sphere/sphere/cache/memory"
 	"github.com/go-sphere/sphere/server/service/file"

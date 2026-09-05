@@ -2,8 +2,8 @@ package dash
 
 import (
 	"github.com/alitto/pond/v2"
-	"github.com/go-sphere/sphere-layout/internal/pkg/dao"
-	"github.com/go-sphere/sphere-layout/internal/pkg/render"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/dao"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/render"
 	"github.com/go-sphere/sphere/cache"
 	"github.com/go-sphere/sphere/cache/memory"
 	"github.com/go-sphere/sphere/server/auth/authorizer"

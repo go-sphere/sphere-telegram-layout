@@ -6,7 +6,7 @@ import (
 	"path"
 	"strconv"
 
-	sharedv1 "github.com/go-sphere/sphere-layout/api/shared/v1"
+	sharedv1 "github.com/go-sphere/sphere-telegram-layout/api/shared/v1"
 	"github.com/go-sphere/sphere/storage"
 )
 

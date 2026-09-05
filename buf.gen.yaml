@@ -14,7 +14,7 @@ managed:
       module: buf.build/go-sphere/binding
   override:
     - file_option: go_package_prefix
-      value: github.com/go-sphere/sphere-layout/api
+      value: github.com/go-sphere/sphere-telegram-layout/api
 plugins:
   - local: protoc-gen-go
     out: api
@@ -27,3 +27,12 @@ plugins:
     opt:
       - paths=source_relative
       - swagger_auth_header=// @Security ApiKeyAuth
+  - local: protoc-gen-route
+    out: api
+    opt:
+      - paths=source_relative
+      - options_key=bot
+      - request_model=github.com/go-sphere/telegram-bot/telegram;Update
+      - response_model=github.com/go-sphere/telegram-bot/telegram;Message
+      - extra_data_model=github.com/go-sphere/telegram-bot/telegram;MethodExtraData
+      - extra_data_constructor=github.com/go-sphere/telegram-bot/telegram;NewMethodExtraData

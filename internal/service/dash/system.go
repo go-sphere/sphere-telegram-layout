@@ -3,7 +3,7 @@ package dash
 import (
 	"context"
 
-	dashv1 "github.com/go-sphere/sphere-layout/api/dash/v1"
+	dashv1 "github.com/go-sphere/sphere-telegram-layout/api/dash/v1"
 )
 
 var _ dashv1.SystemServiceHTTPServer = (*Service)(nil)

@@ -2,10 +2,10 @@
 
 ## Layout Profile
 
-This is the standard Sphere layout. It combines Protobuf/Buf, generated HTTP
+This is the Telegram Sphere layout. It combines Protobuf/Buf, generated HTTP
 handlers, Ent, Wire, Swagger, a dashboard API, local file storage, and a minimal
-username/password application login. It intentionally has no Telegram or
-WeChat dependency.
+username/password application login with a Telegram Bot transport example. It
+intentionally has no WeChat dependency.
 
 ## Ownership Rules
 
@@ -41,4 +41,8 @@ After changing Proto, schemas, constructors, or provider sets, run
 Password authentication resolves a local `User` and then issues a token in
 `internal/service/api/auth.go`. A third-party provider should add its own Proto
 contract and identity persistence, resolve or create a local user, and reuse
-the token-response seam. Do not add provider SDKs to the standard layout.
+the token-response seam. Additional provider SDKs should use their own layouts.
+
+Telegram contracts live in `proto/bot`, transport codecs in
+`internal/server/bot`, and handlers in `internal/service/bot`. Bot startup must
+remain part of the application task group so generated routes are reachable.

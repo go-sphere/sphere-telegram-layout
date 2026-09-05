@@ -1,6 +1,8 @@
-# Sphere Standard Layout
+# Sphere Telegram Layout
 
-`sphere-layout` is the default project template for Sphere. It is a practical, replaceable starter layout that combines mature Go tools instead of hiding them behind a large framework.
+`sphere-telegram-layout` is the Sphere standard project template with a
+Telegram Bot transport example. It is a practical, replaceable starter layout
+that combines mature Go tools instead of hiding them behind a large framework.
 
 The default stack is:
 
@@ -12,9 +14,8 @@ The default stack is:
 - Makefile targets as the day-to-day workflow contract.
 
 The application API includes a deliberately small username/password example.
-Telegram, WeChat, and other provider integrations are separate concerns rather
-than dependencies of the standard layout. Use `sphere-telegram-layout` when a
-Telegram transport example is required.
+Telegram commands and callback queries are generated from `proto/bot`; WeChat
+and other provider integrations are intentionally not included.
 
 These choices are defaults, not hard framework requirements. The layout is intended to show a complete integration path while keeping each third-party tool visible and replaceable.
 
@@ -64,7 +65,7 @@ The template should remain usable with standard commands as well. `make` is a co
 │   ├── pkg             # Shared internal adapters and infrastructure
 │   │   ├── database    # Ent schema, generated Ent client, and database setup
 │   │   └── ...         # Other shared utilities
-│   ├── server          # HTTP, docs, bot, and other transport wiring
+│   ├── server          # HTTP, docs, Telegram bot, and other transport wiring
 │   └── service         # Implementations of generated service interfaces
 ├── proto               # Protobuf source files and API contracts
 ├── scripts             # Helper scripts, including client generation helpers

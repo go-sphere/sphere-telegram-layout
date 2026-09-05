@@ -2,7 +2,7 @@ package dash
 
 import (
 	"github.com/go-sphere/httpx"
-	"github.com/go-sphere/sphere-layout/internal/service/dash"
+	"github.com/go-sphere/sphere-telegram-layout/internal/service/dash"
 )
 
 func NewSessionMetaData() httpx.Middleware {

@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package bot.v1;
+
+import "sphere/options/options.proto";
+
+service MenuService {
+  rpc UpdateCount(UpdateCountRequest) returns (UpdateCountResponse) {
+    option (sphere.options.options) = {
+      key: "bot"
+      extra: {
+        key: "command"
+        value: "start"
+      }
+      extra: {
+        key: "callback_query"
+        value: "start"
+      }
+    };
+  }
+}
+
+message UpdateCountRequest {
+  int64 value = 1;
+  int64 offset = 2;
+}
+
+message UpdateCountResponse {
+  int64 value = 1;
+}

@@ -3,9 +3,9 @@ package dao
 import (
 	"context"
 
-	"github.com/go-sphere/sphere-layout/internal/pkg/conv"
-	"github.com/go-sphere/sphere-layout/internal/pkg/database/ent"
-	"github.com/go-sphere/sphere-layout/internal/pkg/database/ent/user"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/conv"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/ent"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/ent/user"
 )
 
 func (d *Dao) GetUsers(ctx context.Context, ids []int64) (map[int64]*ent.User, error) {

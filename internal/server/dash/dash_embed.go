@@ -4,7 +4,7 @@ package dash
 
 import (
 	"github.com/go-sphere/httpx"
-	"github.com/go-sphere/sphere-layout/assets/dash"
+	"github.com/go-sphere/sphere-telegram-layout/assets/dash"
 	"github.com/go-sphere/sphere/server/httpz"
 )
 

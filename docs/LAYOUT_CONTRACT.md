@@ -55,10 +55,10 @@ versioned go-sphere library; it should not be copied into every layout.
 ```json
 {
   "schema_version": 1,
-  "name": "standard",
-  "repository": "https://github.com/go-sphere/sphere-layout.git",
+    "name": "telegram",
+    "repository": "https://github.com/go-sphere/sphere-telegram-layout.git",
   "ref": "master",
-  "upstream_module": "github.com/go-sphere/sphere-layout",
+    "upstream_module": "github.com/go-sphere/sphere-telegram-layout",
   "base_revision": "full-git-commit-sha"
 }
 ```

@@ -1,7 +1,7 @@
 package dao
 
 import (
-	"github.com/go-sphere/sphere-layout/internal/pkg/database/ent"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/ent"
 )
 
 type Dao struct {

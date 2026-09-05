@@ -3,11 +3,11 @@ package api
 import (
 	"context"
 
-	apiv1 "github.com/go-sphere/sphere-layout/api/api/v1"
-	"github.com/go-sphere/sphere-layout/internal/pkg/auth"
-	"github.com/go-sphere/sphere-layout/internal/pkg/dao"
-	"github.com/go-sphere/sphere-layout/internal/pkg/database/ent"
-	"github.com/go-sphere/sphere-layout/internal/pkg/database/ent/user"
+	apiv1 "github.com/go-sphere/sphere-telegram-layout/api/api/v1"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/auth"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/dao"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/ent"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/ent/user"
 	"github.com/go-sphere/sphere/utils/secure"
 )
 

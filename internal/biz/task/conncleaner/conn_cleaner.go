@@ -3,7 +3,7 @@ package conncleaner
 import (
 	"context"
 
-	"github.com/go-sphere/sphere-layout/internal/pkg/dao"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/dao"
 	"github.com/go-sphere/sphere/cache"
 	"golang.org/x/sync/errgroup"
 )

@@ -1,10 +1,10 @@
 package render
 
 import (
-	"github.com/go-sphere/sphere-layout/api/entpb"
-	sharedv1 "github.com/go-sphere/sphere-layout/api/shared/v1"
-	"github.com/go-sphere/sphere-layout/internal/pkg/database/ent"
-	"github.com/go-sphere/sphere-layout/internal/pkg/render/entmap"
+	"github.com/go-sphere/sphere-telegram-layout/api/entpb"
+	sharedv1 "github.com/go-sphere/sphere-telegram-layout/api/shared/v1"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/ent"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/render/entmap"
 )
 
 func (r *Render) AdminLite(value *ent.Admin) *entpb.Admin {

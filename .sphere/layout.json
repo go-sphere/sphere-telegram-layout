@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "name": "standard",
+  "name": "telegram",
   "upstream": {
-    "repository": "https://github.com/go-sphere/sphere-layout.git",
+    "repository": "https://github.com/go-sphere/sphere-telegram-layout.git",
     "ref": "master",
-    "module": "github.com/go-sphere/sphere-layout"
+    "module": "github.com/go-sphere/sphere-telegram-layout"
   },
   "capabilities": [
     "protobuf",
@@ -15,7 +15,8 @@
     "typescript-client",
     "dashboard",
     "password-auth",
-    "local-storage"
+    "local-storage",
+    "telegram-bot"
   ],
   "ownership": {
     "layout_owned": [
@@ -48,9 +49,12 @@
       "internal/server/*/web.go",
       "internal/pkg/database/schema/**",
       "internal/pkg/auth/**",
+      "internal/server/bot/**",
       "internal/service/api/auth.go",
+      "internal/service/bot/**",
       "proto/api/v1/auth.proto",
       "proto/api/v1/user.proto",
+      "proto/bot/**",
       "proto/shared/v1/user.proto"
     ],
     "generated": [

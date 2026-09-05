@@ -3,7 +3,7 @@ syntax = "proto3";
 
 package entpb;
 
-option go_package = "github.com/go-sphere/sphere-layout/internal/pkg/database/ent/proto/entpb";
+option go_package = "github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/ent/proto/entpb";
 
 message Admin {
   int64 id = 1;

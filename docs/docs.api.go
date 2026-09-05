@@ -1,8 +1,8 @@
 package layout
 
 import (
-	_ "github.com/go-sphere/sphere-layout/api/api/v1"
-	_ "github.com/go-sphere/sphere-layout/api/shared/v1"
+	_ "github.com/go-sphere/sphere-telegram-layout/api/api/v1"
+	_ "github.com/go-sphere/sphere-telegram-layout/api/shared/v1"
 )
 
 // DO NOT DELETE THIS FILE

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/go-sphere/sphere-layout/internal/config"
+	"github.com/go-sphere/sphere-telegram-layout/internal/config"
 	"github.com/go-sphere/sphere/core/boot"
 	"github.com/go-sphere/sphere/log"
 	"github.com/go-sphere/sphere/log/zapx"

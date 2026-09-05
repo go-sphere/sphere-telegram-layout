@@ -10,6 +10,9 @@ deps:
   - name: buf.build/go-sphere/errors
     commit: e6ffd66b6b854dfc8731024a69d7aae8
     digest: b5:1918263efcacd7e18c2d0d7cd0f98641e1f61db88bb4cb8b8527c5bc46fde20dd7ff4477340f5fdd6a5bbbf5b69a70407cb453141e08baf89f397aafdc1a2081
+  - name: buf.build/go-sphere/options
+    commit: 8ba1b029be2e4ef887fa1c746d80f527
+    digest: b5:a8f682c803ec3f5afda3a5b6b9d3fa44250d4ce275a8f0becc9da5e2acab7d9982100eb2d154f6cccf181604ada3ee1541fd7bc1bc7574933bb1d46565b329ac
   - name: buf.build/googleapis/googleapis
     commit: c17df5b2beca46928cc87d5656bd5343
     digest: b5:648a01e0170d4512dea7d564016165decd1ed6e34bef79fe54753e51ad7e27545709ad9157d7551270147d551155c595a2fb0bf5bb33b1c83040ddbce915c604

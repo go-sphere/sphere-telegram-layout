@@ -4,10 +4,10 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/go-sphere/sphere-layout/internal/pkg/dao"
-	"github.com/go-sphere/sphere-layout/internal/pkg/database/client"
-	"github.com/go-sphere/sphere-layout/internal/pkg/database/ent"
-	"github.com/go-sphere/sphere-layout/internal/pkg/database/ent/keyvaluestore"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/dao"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/client"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/ent"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/ent/keyvaluestore"
 	"github.com/go-sphere/sphere/utils/secure"
 )
 

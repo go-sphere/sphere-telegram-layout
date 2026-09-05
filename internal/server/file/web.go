@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"github.com/go-sphere/httpx"
-	"github.com/go-sphere/sphere-layout/internal/pkg/httpsrv"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/httpsrv"
 	"github.com/go-sphere/sphere/server/httpz"
 	"github.com/go-sphere/sphere/server/service/file"
 	"github.com/go-sphere/sphere/storage"

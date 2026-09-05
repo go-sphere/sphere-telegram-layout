@@ -7,16 +7,18 @@
 package main
 
 import (
-	"github.com/go-sphere/sphere-layout/internal/biz/task/conncleaner"
-	"github.com/go-sphere/sphere-layout/internal/biz/task/dashinit"
-	"github.com/go-sphere/sphere-layout/internal/config"
-	"github.com/go-sphere/sphere-layout/internal/pkg/dao"
-	"github.com/go-sphere/sphere-layout/internal/pkg/database/client"
-	api2 "github.com/go-sphere/sphere-layout/internal/server/api"
-	dash2 "github.com/go-sphere/sphere-layout/internal/server/dash"
-	file2 "github.com/go-sphere/sphere-layout/internal/server/file"
-	"github.com/go-sphere/sphere-layout/internal/service/api"
-	"github.com/go-sphere/sphere-layout/internal/service/dash"
+	"github.com/go-sphere/sphere-telegram-layout/internal/biz/task/conncleaner"
+	"github.com/go-sphere/sphere-telegram-layout/internal/biz/task/dashinit"
+	"github.com/go-sphere/sphere-telegram-layout/internal/config"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/dao"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/client"
+	api2 "github.com/go-sphere/sphere-telegram-layout/internal/server/api"
+	bot2 "github.com/go-sphere/sphere-telegram-layout/internal/server/bot"
+	dash2 "github.com/go-sphere/sphere-telegram-layout/internal/server/dash"
+	file2 "github.com/go-sphere/sphere-telegram-layout/internal/server/file"
+	"github.com/go-sphere/sphere-telegram-layout/internal/service/api"
+	"github.com/go-sphere/sphere-telegram-layout/internal/service/bot"
+	"github.com/go-sphere/sphere-telegram-layout/internal/service/dash"
 	"github.com/go-sphere/sphere/cache/memory"
 	"github.com/go-sphere/sphere/core/boot"
 	"github.com/go-sphere/sphere/server/service/file"
@@ -43,6 +45,12 @@ func NewApplication(conf *config.Config) (*boot.Application, error) {
 	apiConfig := conf.API
 	apiService := api.NewService(daoDao, v, fileServer)
 	apiWeb := api2.NewWebServer(apiConfig, fileServer, apiService)
+	v2 := conf.Bot
+	botService := bot.NewService()
+	botBot, err := bot2.NewApp(v2, botService)
+	if err != nil {
+		return nil, err
+	}
 	fileConfig := conf.File
 	fileWeb, err := file2.NewWebServer(fileConfig, fileServer)
 	if err != nil {
@@ -50,6 +58,6 @@ func NewApplication(conf *config.Config) (*boot.Application, error) {
 	}
 	dashInitialize := dashinit.NewDashInitialize(daoDao)
 	connectCleaner := conncleaner.NewConnectCleaner(daoDao, v)
-	application := newApplication(web, apiWeb, fileWeb, dashInitialize, connectCleaner)
+	application := newApplication(web, apiWeb, botBot, fileWeb, dashInitialize, connectCleaner)
 	return application, nil
 }

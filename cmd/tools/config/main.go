@@ -9,7 +9,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/go-sphere/sphere-layout/internal/config"
+	"github.com/go-sphere/sphere-telegram-layout/internal/config"
 	"github.com/go-sql-driver/mysql"
 	"github.com/spf13/cobra"
 )
