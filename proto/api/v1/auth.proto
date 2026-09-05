@@ -23,10 +23,7 @@ service AuthService {
 }
 
 message RegisterWithPasswordRequest {
-  string username = 1 [(buf.validate.field).string = {
-    min_len: 3
-    max_len: 64
-  }];
+  string username = 1 [(buf.validate.field).required = true];
   string password = 2 [(buf.validate.field).string.min_len = 8];
 }
 
@@ -58,5 +55,10 @@ enum AuthError {
     status: 409
     reason: "USERNAME_TAKEN"
     message: "username is already registered"
+  }];
+  AUTH_ERROR_INVALID_USERNAME = 1002 [(sphere.errors.options) = {
+    status: 400
+    reason: "INVALID_USERNAME"
+    message: "username must contain between 3 and 64 characters"
   }];
 }

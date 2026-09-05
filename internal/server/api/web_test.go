@@ -61,6 +61,14 @@ func TestPasswordAuthenticationFlow(t *testing.T) {
 	})
 
 	const password = "correct-horse-battery-staple"
+	status, _ := apiJSONRequest(t, http.MethodPost, baseURL+"/api/auth/register", map[string]string{
+		"username": " a ",
+		"password": password,
+	}, "")
+	if status != http.StatusBadRequest {
+		t.Fatalf("normalized short username status = %d, want %d", status, http.StatusBadRequest)
+	}
+
 	status, body := apiJSONRequest(t, http.MethodPost, baseURL+"/api/auth/register", map[string]string{
 		"username": " Alice ",
 		"password": password,
@@ -92,12 +100,19 @@ func TestPasswordAuthenticationFlow(t *testing.T) {
 		t.Fatalf("duplicate register status = %d, want %d", status, http.StatusConflict)
 	}
 
-	status, _ = apiJSONRequest(t, http.MethodPost, baseURL+"/api/auth/login", map[string]string{
+	status, wrongPasswordBody := apiJSONRequest(t, http.MethodPost, baseURL+"/api/auth/login", map[string]string{
 		"username": "alice",
 		"password": "wrong-password",
 	}, "")
 	if status != http.StatusUnauthorized {
 		t.Fatalf("wrong password status = %d, want %d", status, http.StatusUnauthorized)
+	}
+	status, missingUserBody := apiJSONRequest(t, http.MethodPost, baseURL+"/api/auth/login", map[string]string{
+		"username": "missing-user",
+		"password": password,
+	}, "")
+	if status != http.StatusUnauthorized || missingUserBody != wrongPasswordBody {
+		t.Fatalf("missing user response differs from wrong password: status=%d body=%s", status, missingUserBody)
 	}
 
 	status, body = apiJSONRequest(t, http.MethodPost, baseURL+"/api/auth/login", map[string]string{
@@ -119,6 +134,9 @@ func TestPasswordAuthenticationFlow(t *testing.T) {
 	status, body = apiJSONRequest(t, http.MethodGet, baseURL+"/api/user/me", nil, login.Data.Token)
 	if status != http.StatusOK || !strings.Contains(body, `"username":"alice"`) {
 		t.Fatalf("authenticated me status = %d, body=%s", status, body)
+	}
+	if strings.Contains(strings.ToLower(body), "password") {
+		t.Fatalf("authenticated me response leaked password data: %s", body)
 	}
 }
 

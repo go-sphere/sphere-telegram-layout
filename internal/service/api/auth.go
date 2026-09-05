@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"unicode/utf8"
 
 	apiv1 "github.com/go-sphere/sphere-telegram-layout/api/api/v1"
 	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/auth"
@@ -15,6 +16,9 @@ var _ apiv1.AuthServiceHTTPServer = (*Service)(nil)
 
 func (s *Service) RegisterWithPassword(ctx context.Context, request *apiv1.RegisterWithPasswordRequest) (*apiv1.RegisterWithPasswordResponse, error) {
 	username := auth.NormalizeUsername(request.Username)
+	if length := utf8.RuneCountInString(username); length < 3 || length > 64 {
+		return nil, apiv1.AuthError_AUTH_ERROR_INVALID_USERNAME
+	}
 	password, err := secure.CryptPassword(request.Password)
 	if err != nil {
 		return nil, err
