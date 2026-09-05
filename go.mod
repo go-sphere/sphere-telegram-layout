@@ -1,6 +1,6 @@
 module github.com/go-sphere/sphere-telegram-layout
 
-go 1.26.4
+go 1.26.8
 
 require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.12-20260825204119-511051f7f437.2

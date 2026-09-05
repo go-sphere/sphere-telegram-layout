@@ -14,16 +14,13 @@ import (
 
 func init() {
 	httpz.SetDefaultErrorParser(func(err error) (int32, int32, string) {
-		var ve *protovalidate.ValidationError
-		if errors.As(err, &ve) {
+		if ve, ok := errors.AsType[*protovalidate.ValidationError](err); ok {
 			return ValidationError(ve)
 		}
-		var ne *ent.NotFoundError
-		if errors.As(err, &ne) {
+		if ne, ok := errors.AsType[*ent.NotFoundError](err); ok {
 			return EntNotFoundError(ne)
 		}
-		var ce *ent.ConstraintError
-		if errors.As(err, &ce) {
+		if ce, ok := errors.AsType[*ent.ConstraintError](err); ok {
 			return EntConstraintError(ce)
 		}
 		return httpx.ParseError(err)
