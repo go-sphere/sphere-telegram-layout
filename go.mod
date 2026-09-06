@@ -7,7 +7,6 @@ require (
 	buf.build/go/protovalidate v1.4.0
 	entgo.io/ent v0.14.6
 	github.com/alitto/pond/v2 v2.7.1
-	github.com/gin-contrib/zap v1.1.7
 	github.com/gin-gonic/gin v1.12.0
 	github.com/go-sphere/binding v0.0.4
 	github.com/go-sphere/confstore v0.0.4
@@ -18,7 +17,7 @@ require (
 	github.com/go-sphere/httpx v0.0.4
 	github.com/go-sphere/httpx/ginx v0.0.4
 	github.com/go-sphere/options v0.0.1
-	github.com/go-sphere/sphere v0.0.5
+	github.com/go-sphere/sphere v0.0.6-0.20260906140008-0292cf303e83
 	github.com/go-sphere/telegram-bot v0.0.2
 	github.com/go-sql-driver/mysql v1.10.1
 	github.com/go-viper/mapstructure/v2 v2.5.0

@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/go-sphere/sphere-telegram-layout/internal/config"
 	"github.com/go-sphere/sphere/core/boot"
@@ -15,7 +16,10 @@ func Execute(app func(*config.Config) (*boot.Application, error)) {
 	backend := zapx.NewBackend(conf.Log, log.WithAttrs(map[string]any{
 		"version": config.BuildVersion,
 	}))
-	err := boot.Run(conf, app, boot.WithLoggerBackend(backend))
+	err := boot.Run(conf, app,
+		boot.WithLoggerBackend(backend),
+		boot.WithShutdownTimeout(5*time.Second),
+	)
 	if err != nil {
 		fmt.Printf("Boot error: %v", err)
 		os.Exit(1)
