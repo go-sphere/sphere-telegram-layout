@@ -122,6 +122,8 @@ github.com/go-sphere/options v0.0.1 h1:UmctzcFlkkbpl/AX8zJchZBeCPW01JfbGpkWS+Xir
 github.com/go-sphere/options v0.0.1/go.mod h1:5UC9Sr5iQFuXZF+AbRi1I64St9K5hgQGefriZdoNf4U=
 github.com/go-sphere/sphere v0.0.6-0.20260906140008-0292cf303e83 h1:Bef1375ObTXwi1vurX7Vxn85PjAGESA5NMy7Gp/7Zog=
 github.com/go-sphere/sphere v0.0.6-0.20260906140008-0292cf303e83/go.mod h1:hAkuuKbO5nEf3V5Hxmg7GEsvz3pzZjcePEd7m4GibSM=
+github.com/go-sphere/telegram-bot v0.0.2 h1:AzwQPqxm6IkWOEthxcxx1ncctBewgGLs7dPqOk8QJ6k=
+github.com/go-sphere/telegram-bot v0.0.2/go.mod h1://FJtWfJsbXS/knelR4H/DWJZ7qi0PBQhF/8oGkGyNA=
 github.com/go-sql-driver/mysql v1.10.1 h1:arlSnNLq6a5yxGxV7qg9lF4j0C+KwD6NbQyKr9QL6ME=
 github.com/go-sql-driver/mysql v1.10.1/go.mod h1:M+cqaI7+xxXGG9swrdeUIoPG3Y3KCkF0pZej+SK+nWk=
 github.com/go-telegram/bot v1.25.0 h1:C072msZtr+GjJiQsX/UJLirz+jzSNZVWkckxWufR7Ww=
