@@ -13,9 +13,11 @@ The default stack is:
 - Swagger/OpenAPI and TypeScript client generation.
 - Makefile targets as the day-to-day workflow contract.
 
-The application API includes a deliberately small username/password example.
-Telegram commands and callback queries are generated from `proto/bot`; WeChat
-and other provider integrations are intentionally not included.
+The dashboard exposes admin authentication (JWT access tokens with rotating
+refresh tokens), CRUD services, and the file upload/download routes backed by
+local storage. Telegram commands and callback queries are generated from
+`proto/bot`; WeChat and other provider integrations are intentionally not
+included.
 
 These choices are defaults, not hard framework requirements. The layout is intended to show a complete integration path while keeping each third-party tool visible and replaceable.
 
@@ -37,7 +39,6 @@ Sphere build tool. Usage: make [target]
   gen/dts              Generate TypeScript clients from Swagger
   run                  Run the application locally
   run/race             Run the application with the race detector
-  run/swag             Run the Swagger UI server
   lint                 Run Go, Buf, and golangci-lint checks
   fmt                  Format Go modules, Go source, Buf files, and imports
   build                Build a binary for the current platform
@@ -49,6 +50,56 @@ Sphere build tool. Usage: make [target]
 ```
 
 The template should remain usable with standard commands as well. `make` is a convenience layer over Go, Buf, Wire, Swag, Docker, and shell scripts.
+
+## Telegram Bot Example
+
+The bot transport is wired in `internal/server/bot` and its handlers in
+`internal/service/bot`. Routing metadata — which RPC maps to a `/command` or to
+a `callback_query` prefix — lives in `proto/bot/v1/menu.proto` and is turned
+into Go glue by `protoc-gen-route` (option `(sphere.options.options)`). The
+generated `RegisterMenuServiceBotServer` is bound in
+`internal/server/bot/bot.go`.
+
+Set the token first (see `config.json` → `bot.token`) and run the app. With
+the example placeholder token the bot is skipped with a warning and the
+dashboard still starts; once a real token is configured the bot comes up
+with the app. Open a private chat with the bot and try:
+
+- `/start` — the **home screen**: a banner photo and a 2×2 grid with one
+  button per demo. The demo buttons carry `nav_*` callback routes bound to the
+  same RPCs as the commands, so pressing one **edits the home message in
+  place** into that demo. Every demo screen carries a `🏠 Home` button
+  (`nav_home`) that edits the message back home.
+- `/counter` — a **counter menu whose keyboard changes with the value**: a
+  single `+1` button at zero, and `-1 / +1 / Reset` once the counter has
+  moved. The buttons carry typed payloads (`UpdateCountRequest`) in the
+  callback data and re-render the same message through `telegram.SendMessage`,
+  which **edits in place** on callback queries (no chat spam).
+- `/menu` — a **card that starts text-only (no image)** and can be upgraded
+  to a photo from its own `🖼 Image` button via `EditMessageMedia` (Telegram
+  upgrades plain text messages in place). The `1 btn / 2 btn / 3 btn` buttons
+  re-render the keyboard with 1-3 item buttons, and picking an item
+  demonstrates that the same handler edits a **text message** or a **photo
+  caption** depending on the original message type.
+- `/photo` — a **media message** (photo + caption + buttons). The
+  `Swap photo` button replaces the picture via `EditMessageMedia`; `Next
+  caption` rewrites only the caption via `EditMessageCaption`.
+- `/catalog` — a **paginated list** (`⏪ Prev / 1/3 / Next ⏩`); item rows
+  open a detail page carrying the item id plus the originating page in the
+  callback payload, so `↩ Back` returns to the same list page. The detail
+  page has a **quantity stepper** whose count round-trips in the payload —
+  the same list → detail → quantity pattern a shop flow uses.
+- `/help` — text reply with an inline **URL button** (`NewURLButton`, no
+  callback data).
+
+The example shows the render styles supported by `telegram.Message`: plain
+text with an inline keyboard, media with caption + keyboard, a caption-only
+edit (media left nil), a text-to-media upgrade, and in-place navigation
+between screens. Payloads that must round-trip inside callback data (Telegram
+limits it to 64 bytes) are declared as proto messages and go through
+`telegram.MarshalData`/`UnmarshalData`; decoding with a fallback default is
+provided by `UnmarshalUpdateDataWithDefault` in
+`internal/server/bot/utils.go`.
 
 ## Project Structure
 
@@ -65,7 +116,7 @@ The template should remain usable with standard commands as well. `make` is a co
 │   ├── pkg             # Shared internal adapters and infrastructure
 │   │   ├── database    # Ent schema, generated Ent client, and database setup
 │   │   └── ...         # Other shared utilities
-│   ├── server          # HTTP, docs, Telegram bot, and other transport wiring
+│   ├── server          # Dashboard HTTP (dash + file routes) and Telegram bot
 │   └── service         # Implementations of generated service interfaces
 ├── proto               # Protobuf source files and API contracts
 ├── scripts             # Helper scripts, including client generation helpers

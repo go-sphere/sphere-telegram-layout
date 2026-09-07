@@ -12,11 +12,8 @@ import (
 	"github.com/go-sphere/sphere-telegram-layout/internal/config"
 	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/dao"
 	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/client"
-	api2 "github.com/go-sphere/sphere-telegram-layout/internal/server/api"
 	bot2 "github.com/go-sphere/sphere-telegram-layout/internal/server/bot"
 	dash2 "github.com/go-sphere/sphere-telegram-layout/internal/server/dash"
-	file2 "github.com/go-sphere/sphere-telegram-layout/internal/server/file"
-	"github.com/go-sphere/sphere-telegram-layout/internal/service/api"
 	"github.com/go-sphere/sphere-telegram-layout/internal/service/bot"
 	"github.com/go-sphere/sphere-telegram-layout/internal/service/dash"
 	"github.com/go-sphere/sphere/cache/memory"
@@ -42,22 +39,14 @@ func NewApplication(conf *config.Config) (*boot.Application, error) {
 	v := memory.NewByteCache()
 	service := dash.NewService(daoDao, v, fileServer)
 	web := dash2.NewWebServer(dashConfig, fileServer, service)
-	apiConfig := conf.API
-	apiService := api.NewService(daoDao, v, fileServer)
-	apiWeb := api2.NewWebServer(apiConfig, fileServer, apiService)
 	v2 := conf.Bot
 	botService := bot.NewService()
 	botBot, err := bot2.NewApp(v2, botService)
 	if err != nil {
 		return nil, err
 	}
-	fileConfig := conf.File
-	fileWeb, err := file2.NewWebServer(fileConfig, fileServer)
-	if err != nil {
-		return nil, err
-	}
 	dashInitialize := dashinit.NewDashInitialize(daoDao)
 	connectCleaner := conncleaner.NewConnectCleaner(daoDao, v)
-	application := newApplication(web, apiWeb, botBot, fileWeb, dashInitialize, connectCleaner)
+	application := newApplication(web, botBot, dashInitialize, connectCleaner)
 	return application, nil
 }

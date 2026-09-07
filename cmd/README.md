@@ -2,11 +2,12 @@
 
 ## app
 
-This is an example application entry point for Sphere. It is a simple web server that serves the API and static files.
+This is the example application entry point for Sphere. It runs the dashboard
+HTTP server (dash + file routes) and the Telegram bot.
 
 ## tools
 
-- `bind`: Automatically generate entity binding code for conversion from `ent` to `entpb`.
 - `config`: Generate configuration example files.
-- `docs`: Run swagger server to serve API documentation.
-- `ent`: Generate `ent` code for the database schema.
+- `gen/ent`: Generate `ent` code for the database schema.
+- `gen/entmap`: Generate `ent` → `entpb` mapping helpers.
+- `gen/entcrud`: Generate entity create/update binding code.

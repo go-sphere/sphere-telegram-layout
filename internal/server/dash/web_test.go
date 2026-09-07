@@ -9,7 +9,7 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -18,7 +18,10 @@ import (
 	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/ent"
 	servicedash "github.com/go-sphere/sphere-telegram-layout/internal/service/dash"
 	"github.com/go-sphere/sphere/cache/memory"
+	"github.com/go-sphere/sphere/server/httpz"
+	spherefile "github.com/go-sphere/sphere/server/service/file"
 	"github.com/go-sphere/sphere/storage"
+	"github.com/go-sphere/sphere/storage/fileserver"
 	"github.com/go-sphere/sphere/utils/secure"
 )
 
@@ -29,10 +32,10 @@ const (
 
 func TestWebAuthAndAdminEndpoints(t *testing.T) {
 	t.Run("default credentials should return token", func(t *testing.T) {
-		baseURL, cleanup := setupTestWeb(t)
+		baseURL, _, cleanup := setupTestWeb(t)
 		defer cleanup()
 
-		status, body := doJSONRequest(t, http.MethodPost, baseURL+"/api/login", map[string]string{
+		status, body := doJSONRequest(t, http.MethodPost, baseURL+"/api/auth/login", map[string]string{
 			"username": testAdminUsername,
 			"password": testAdminPassword,
 		}, nil)
@@ -40,17 +43,17 @@ func TestWebAuthAndAdminEndpoints(t *testing.T) {
 			t.Fatalf("expected status 200, got %d, body=%s", status, body)
 		}
 
-		token := parseLoginToken(t, body)
-		if token == "" {
-			t.Fatalf("expected non-empty accessToken, body=%s", body)
+		tokens := parseAuthTokens(t, body)
+		if tokens.AccessToken == "" || tokens.RefreshToken == "" {
+			t.Fatalf("expected non-empty access_token and refresh_token, body=%s", body)
 		}
 	})
 
 	t.Run("wrong credentials should not return token", func(t *testing.T) {
-		baseURL, cleanup := setupTestWeb(t)
+		baseURL, _, cleanup := setupTestWeb(t)
 		defer cleanup()
 
-		status, body := doJSONRequest(t, http.MethodPost, baseURL+"/api/login", map[string]string{
+		status, body := doJSONRequest(t, http.MethodPost, baseURL+"/api/auth/login", map[string]string{
 			"username": "wrong-user",
 			"password": "wrong-password",
 		}, nil)
@@ -59,24 +62,38 @@ func TestWebAuthAndAdminEndpoints(t *testing.T) {
 		}
 	})
 
-	t.Run("valid token should get admin list", func(t *testing.T) {
-		baseURL, cleanup := setupTestWeb(t)
+	t.Run("refresh rotates tokens and bearer accesses admin list", func(t *testing.T) {
+		baseURL, _, cleanup := setupTestWeb(t)
 		defer cleanup()
 
-		loginStatus, loginBody := doJSONRequest(t, http.MethodPost, baseURL+"/api/login", map[string]string{
+		loginStatus, loginBody := doJSONRequest(t, http.MethodPost, baseURL+"/api/auth/login", map[string]string{
 			"username": testAdminUsername,
 			"password": testAdminPassword,
 		}, nil)
 		if loginStatus != http.StatusOK {
 			t.Fatalf("login status = %d, want %d, body=%s", loginStatus, http.StatusOK, loginBody)
 		}
-		token := parseLoginToken(t, loginBody)
-		if token == "" {
-			t.Fatalf("expected login token, body=%s", loginBody)
+		tokens := parseAuthTokens(t, loginBody)
+		if tokens.AccessToken == "" || tokens.RefreshToken == "" {
+			t.Fatalf("expected login tokens, body=%s", loginBody)
+		}
+
+		refreshStatus, refreshBody := doJSONRequest(t, http.MethodPost, baseURL+"/api/auth/refresh", map[string]string{
+			"refresh_token": tokens.RefreshToken,
+		}, nil)
+		if refreshStatus != http.StatusOK {
+			t.Fatalf("refresh status = %d, want %d, body=%s", refreshStatus, http.StatusOK, refreshBody)
+		}
+		refreshed := parseAuthTokens(t, refreshBody)
+		if refreshed.AccessToken == "" || refreshed.RefreshToken == "" {
+			t.Fatalf("expected refreshed tokens, body=%s", refreshBody)
+		}
+		if refreshed.AccessToken == tokens.AccessToken || refreshed.RefreshToken == tokens.RefreshToken {
+			t.Fatalf("refresh did not rotate tokens, body=%s", refreshBody)
 		}
 
 		status, body := doJSONRequest(t, http.MethodGet, baseURL+"/api/admin/list", nil, map[string]string{
-			"Authorization": "Bearer " + token,
+			"Authorization": "Bearer " + refreshed.AccessToken,
 		})
 		if status != http.StatusOK {
 			t.Fatalf("expected status 200, got %d, body=%s", status, body)
@@ -88,8 +105,21 @@ func TestWebAuthAndAdminEndpoints(t *testing.T) {
 		}
 	})
 
+	t.Run("legacy pure-admin login path is gone", func(t *testing.T) {
+		baseURL, _, cleanup := setupTestWeb(t)
+		defer cleanup()
+
+		status, body := doJSONRequest(t, http.MethodPost, baseURL+"/api/login", map[string]string{
+			"username": testAdminUsername,
+			"password": testAdminPassword,
+		}, nil)
+		if status == http.StatusOK {
+			t.Fatalf("legacy /api/login still succeeded, body=%s", body)
+		}
+	})
+
 	t.Run("invalid token should not get admin list", func(t *testing.T) {
-		baseURL, cleanup := setupTestWeb(t)
+		baseURL, _, cleanup := setupTestWeb(t)
 		defer cleanup()
 
 		status, body := doJSONRequest(t, http.MethodGet, baseURL+"/api/admin/list", nil, map[string]string{
@@ -101,29 +131,106 @@ func TestWebAuthAndAdminEndpoints(t *testing.T) {
 	})
 }
 
-func setupTestWeb(t *testing.T) (string, func()) {
+func TestWebServer_TokenUploadDownloadFlow(t *testing.T) {
+	_, fileServer, cleanup := setupTestWeb(t)
+	defer cleanup()
+
+	content := []byte("sphere-telegram-layout upload/download e2e")
+
+	// Step 1: get upload token.
+	authData, err := fileServer.GenerateUploadAuth(context.Background(), storage.UploadAuthRequest{
+		Dir:      "user",
+		FileName: "test.txt",
+	})
+	if err != nil {
+		t.Fatalf("GenerateUploadAuth() error = %v", err)
+	}
+	if authData.Authorization.Value == "" {
+		t.Fatal("GenerateUploadAuth() returned empty upload token url")
+	}
+
+	// Step 2: upload file with token url.
+	uploadReq, err := http.NewRequest(http.MethodPut, authData.Authorization.Value, bytes.NewReader(content))
+	if err != nil {
+		t.Fatalf("http.NewRequest(PUT) error = %v", err)
+	}
+	uploadResp, err := http.DefaultClient.Do(uploadReq)
+	if err != nil {
+		t.Fatalf("upload request error = %v", err)
+	}
+	defer func() {
+		_ = uploadResp.Body.Close()
+	}()
+	if uploadResp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(uploadResp.Body)
+		t.Fatalf("upload status = %d, body = %s", uploadResp.StatusCode, string(body))
+	}
+	uploadBody, err := io.ReadAll(uploadResp.Body)
+	if err != nil {
+		t.Fatalf("read upload body error = %v", err)
+	}
+	var uploadResult httpz.DataResponse[fileserver.UploadResult]
+	if err = json.Unmarshal(uploadBody, &uploadResult); err != nil {
+		t.Fatalf("decode upload response error = %v, body = %s", err, string(uploadBody))
+	}
+	if uploadResult.Data.Key != authData.File.Key {
+		t.Fatalf("upload response key = %q, want %q", uploadResult.Data.Key, authData.File.Key)
+	}
+	if uploadResult.Data.URL != authData.File.URL {
+		t.Fatalf("upload response url = %q, want %q", uploadResult.Data.URL, authData.File.URL)
+	}
+
+	// Step 3: download uploaded file.
+	downloadResp, err := http.Get(authData.File.URL)
+	if err != nil {
+		t.Fatalf("download request error = %v", err)
+	}
+	defer func() {
+		_ = downloadResp.Body.Close()
+	}()
+	if downloadResp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(downloadResp.Body)
+		t.Fatalf("download status = %d, url = %s, key = %s, body = %s", downloadResp.StatusCode, authData.File.URL, authData.File.Key, string(body))
+	}
+	downloaded, err := io.ReadAll(downloadResp.Body)
+	if err != nil {
+		t.Fatalf("io.ReadAll(download) error = %v", err)
+	}
+	if !bytes.Equal(downloaded, content) {
+		t.Fatalf("download content mismatch: got = %q, want = %q", string(downloaded), string(content))
+	}
+}
+
+func setupTestWeb(t *testing.T) (string, *fileserver.FileServer, func()) {
 	t.Helper()
 
 	addr := randomLocalAddress(t)
 	db := newMemoryDB(t)
 	insertDefaultAdmin(t, db)
 
-	testStorage := &noopStorage{}
-	service := servicedash.NewService(dao.NewDao(db), memory.NewByteCache(), testStorage)
+	baseURL := "http://" + addr
+	fileServer, err := spherefile.NewLocalFileService(spherefile.LocalFileServiceConfig{
+		RootDir:    t.TempDir(),
+		PublicBase: baseURL + "/files",
+	})
+	if err != nil {
+		t.Fatalf("create test storage: %v", err)
+	}
+
+	service := servicedash.NewService(dao.NewDao(db), memory.NewByteCache(), fileServer)
 	web := NewWebServer(Config{
 		AuthJWT:    "test-auth-jwt-secret",
 		RefreshJWT: "test-refresh-jwt-secret",
 		HTTP: HTTPConfig{
 			Address: addr,
 		},
-	}, testStorage, service)
+	}, fileServer, service)
 
 	startErr := make(chan error, 1)
 	go func() {
-		startErr <- web.Start(context.Background())
+		startErr <- web.Start(t.Context())
 	}()
 
-	baseURL := "http://" + addr
 	waitServerReady(t, baseURL, startErr)
 
 	cleanup := func() {
@@ -139,7 +246,7 @@ func setupTestWeb(t *testing.T) (string, func()) {
 		case <-time.After(time.Second):
 		}
 	}
-	return baseURL, cleanup
+	return baseURL, fileServer, cleanup
 }
 
 func waitServerReady(t *testing.T, baseURL string, startErr <-chan error) {
@@ -153,12 +260,10 @@ func waitServerReady(t *testing.T, baseURL string, startErr <-chan error) {
 			t.Fatalf("web server start failed: %v", err)
 		default:
 		}
-		resp, err := httpClient.Get(baseURL + "/api/get-async-routes")
+		resp, err := httpClient.Get(baseURL + "/")
 		if err == nil {
 			_ = resp.Body.Close()
-			if resp.StatusCode == http.StatusOK {
-				return
-			}
+			return
 		}
 		time.Sleep(time.Millisecond * 50)
 	}
@@ -201,7 +306,7 @@ func insertDefaultAdmin(t *testing.T, db *ent.Client) {
 		SetUsername(testAdminUsername).
 		SetPassword(password).
 		SetRoles([]string{"all"}).
-		Save(context.Background())
+		Save(t.Context())
 	if err != nil {
 		t.Fatalf("insert admin failed: %v", err)
 	}
@@ -219,7 +324,7 @@ func doJSONRequest(t *testing.T, method, target string, payload any, headers map
 		body = bytes.NewBuffer(raw)
 	}
 
-	req, err := http.NewRequest(method, target, body)
+	req, err := http.NewRequestWithContext(t.Context(), method, target, body)
 	if err != nil {
 		t.Fatalf("create request failed: %v", err)
 	}
@@ -243,18 +348,25 @@ func doJSONRequest(t *testing.T, method, target string, payload any, headers map
 	return resp.StatusCode, string(raw)
 }
 
-func parseLoginToken(t *testing.T, body string) string {
+type authTokenData struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	ExpiresAt    int64  `json:"expires_at"`
+}
+
+func parseAuthTokens(t *testing.T, body string) authTokenData {
 	t.Helper()
 
 	var resp struct {
-		Data struct {
-			AccessToken string `json:"accessToken"`
-		} `json:"data"`
+		Data authTokenData `json:"data"`
 	}
 	if err := json.Unmarshal([]byte(body), &resp); err != nil {
-		t.Fatalf("decode login response: %v, body=%s", err, body)
+		t.Fatalf("decode auth response: %v, body=%s", err, body)
 	}
-	return resp.Data.AccessToken
+	if strings.Contains(body, `"accessToken"`) || strings.Contains(body, `"refreshToken"`) {
+		t.Fatalf("auth response still uses camelCase token fields, body=%s", body)
+	}
+	return resp.Data
 }
 
 func parseAdminCount(t *testing.T, body string) int {
@@ -270,47 +382,3 @@ func parseAdminCount(t *testing.T, body string) int {
 	}
 	return len(resp.Data.Admins)
 }
-
-type noopStorage struct{}
-
-func (n *noopStorage) GenerateURL(key string, _ ...url.Values) string { return key }
-
-func (n *noopStorage) GenerateURLs(keys []string, _ ...url.Values) []string { return keys }
-
-func (n *noopStorage) ExtractKeyFromURL(uri string) string { return uri }
-
-func (n *noopStorage) ExtractKeyFromURLWithMode(uri string, _ bool) (string, error) { return uri, nil }
-
-func (n *noopStorage) GenerateUploadAuth(_ context.Context, req storage.UploadAuthRequest) (storage.UploadAuthResult, error) {
-	return storage.UploadAuthResult{
-		Authorization: storage.UploadAuthorization{
-			Type:   storage.UploadAuthorizationTypeToken,
-			Value:  "test-upload-token",
-			Method: http.MethodPost,
-		},
-		File: storage.UploadFileInfo{
-			Key: req.FileName,
-			URL: req.FileName,
-		},
-	}, nil
-}
-
-func (n *noopStorage) UploadFile(_ context.Context, _ io.Reader, key string) (string, error) {
-	return key, nil
-}
-
-func (n *noopStorage) UploadLocalFile(_ context.Context, _ string, key string) (string, error) {
-	return key, nil
-}
-
-func (n *noopStorage) IsFileExists(_ context.Context, _ string) (bool, error) { return false, nil }
-
-func (n *noopStorage) DownloadFile(_ context.Context, _ string) (storage.DownloadResult, error) {
-	return storage.DownloadResult{}, errors.New("not implemented")
-}
-
-func (n *noopStorage) DeleteFile(_ context.Context, _ string) error { return nil }
-
-func (n *noopStorage) MoveFile(_ context.Context, _, _ string, _ bool) error { return nil }
-
-func (n *noopStorage) CopyFile(_ context.Context, _, _ string, _ bool) error { return nil }

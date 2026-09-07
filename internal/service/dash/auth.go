@@ -18,7 +18,6 @@ var _ dashv1.AuthServiceHTTPServer = (*Service)(nil)
 const (
 	AuthTokenValidDuration    = time.Hour
 	RefreshTokenValidDuration = time.Hour * 24
-	AuthExpiresTimeFormat     = "2006/01/02 15:04:05"
 )
 
 const (
@@ -30,12 +29,7 @@ type AdminToken struct {
 	Admin        *ent.Admin
 	AccessToken  string
 	RefreshToken string
-	Expires      string
-}
-
-type Session struct {
-	UID     int64 `json:"uid"`
-	Expires int64 `json:"expires"`
+	ExpiresAt    int64
 }
 
 func (s *Service) createAdminToken(ctx context.Context, client *ent.Client, administrator *ent.Admin) (*AdminToken, error) {
@@ -45,6 +39,7 @@ func (s *Service) createAdminToken(ctx context.Context, client *ent.Client, admi
 	}
 
 	authClaims := jwtauth.NewRBACClaims(administrator.ID, administrator.Username, administrator.Roles, time.Now().Add(AuthTokenValidDuration))
+	authClaims.ID = newUUID.String()
 	token, err := s.authorizer.GenerateToken(ctx, authClaims)
 	if err != nil {
 		return nil, err
@@ -72,11 +67,16 @@ func (s *Service) createAdminToken(ctx context.Context, client *ent.Client, admi
 		return nil, err
 	}
 
+	var expiresAt int64
+	if authClaims.ExpiresAt != nil {
+		expiresAt = authClaims.ExpiresAt.Unix()
+	}
+
 	return &AdminToken{
 		Admin:        administrator,
 		AccessToken:  token,
 		RefreshToken: refresh,
-		Expires:      authClaims.ExpiresAt.Format(AuthExpiresTimeFormat),
+		ExpiresAt:    expiresAt,
 	}, nil
 }
 
@@ -95,12 +95,9 @@ func (s *Service) LoginWithPassword(ctx context.Context, request *dashv1.LoginWi
 		return nil, err
 	}
 	return &dashv1.LoginWithPasswordResponse{
-		Avatar:       s.storage.GenerateURL(token.Admin.Avatar),
-		Username:     token.Admin.Username,
-		Roles:        token.Admin.Roles,
 		AccessToken:  token.AccessToken,
 		RefreshToken: token.RefreshToken,
-		Expires:      token.Expires,
+		ExpiresAt:    token.ExpiresAt,
 	}, nil
 }
 
@@ -141,6 +138,6 @@ func (s *Service) RefreshToken(ctx context.Context, request *dashv1.RefreshToken
 	return &dashv1.RefreshTokenResponse{
 		AccessToken:  token.AccessToken,
 		RefreshToken: token.RefreshToken,
-		Expires:      token.Expires,
+		ExpiresAt:    token.ExpiresAt,
 	}, nil
 }

@@ -3,8 +3,8 @@
 ## Layout Profile
 
 This is the Telegram Sphere layout. It combines Protobuf/Buf, generated HTTP
-handlers, Ent, Wire, Swagger, a dashboard API, local file storage, and a minimal
-username/password application login with a Telegram Bot transport example. It
+handlers, Ent, Wire, Swagger, a dashboard with admin authentication and local
+file upload/download routes, and a Telegram Bot transport example. It
 intentionally has no WeChat dependency.
 
 ## Ownership Rules
@@ -36,12 +36,14 @@ After changing Proto, schemas, constructors, or provider sets, run
 `make gen/all` before tests. A completed change must pass `make check` and
 `make build`, and tracked generated files must have no unexplained drift.
 
-## Authentication Extension
+## Dashboard Authentication
 
-Password authentication resolves a local `User` and then issues a token in
-`internal/service/api/auth.go`. A third-party provider should add its own Proto
-contract and identity persistence, resolve or create a local user, and reuse
-the token-response seam. Additional provider SDKs should use their own layouts.
+Admin authentication lives in `internal/service/dash/auth.go`: password login
+issues a JWT access token plus a refresh token backed by an `AdminSession`
+row, and refresh rotates both. The response contract is snake_case
+(`access_token`, `refresh_token`, `expires_at`) over `POST /api/auth/login`
+and `POST /api/auth/refresh`; it is not pure-admin compatible. File upload
+and download routes are registered on the dash server under `/files`.
 
 Telegram contracts live in `proto/bot`, transport codecs in
 `internal/server/bot`, and handlers in `internal/service/bot`. Bot startup must

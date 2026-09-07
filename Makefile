@@ -44,7 +44,7 @@ INTERNAL_TOOLS  ?= $(GO) run -tags spheretools
 	build build/all clean\
 	gen/wire gen/conf gen/db gen/proto gen/docs gen/all gen/dts\
 	build/assets build/docker build/multi-docker \
-	run run/race run/swag deploy deps-update tidy test lint fmt check \
+	run run/race deploy deps-update tidy test lint fmt check \
 	install init help
 
 # ---------- Build Tools ----------
@@ -87,12 +87,6 @@ gen/proto: gen/db ## Generate proto files and run protoc plugins
 	$(INTERNAL_TOOLS) ./cmd/tools/gen/entcrud
 
 gen/docs: gen/proto ## Generate swagger docs
-	$(SWAG_CLI) init \
-		--output ./swagger/api \
-		--tags api.v1,shared.v1 \
-		--instanceName API \
-		-g docs/docs.api.go \
-		--parseDependency
 	$(SWAG_CLI) init \
 		--output ./swagger/dash \
 		--tags dash.v1,shared.v1 \
@@ -148,9 +142,6 @@ run: ## Run the application
 
 run/race: ## Run the application with the race detector
 	$(GO_RUN_RACE) $(MODULE)/cmd/app
-
-run/swag: ## Run the swagger server
-	$(INTERNAL_TOOLS) $(MODULE)/cmd/tools/docs
 
 deploy: ## Deploy binary
 	./devops/deploy/deploy.sh

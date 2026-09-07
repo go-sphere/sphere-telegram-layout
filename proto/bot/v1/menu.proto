@@ -4,8 +4,22 @@ package bot.v1;
 
 import "sphere/options/options.proto";
 
+// MenuService demonstrates Telegram bot handlers generated from proto
+// (protoc-gen-route). Each RPC carries its bot routing metadata in the
+// (sphere.options.options) extension: a "command" is matched on message text,
+// a "callback_query" is matched as the prefix of inline-button callback data.
+//
+// Navigation model: /start lands on a home screen with one button per demo.
+// The demo buttons carry "nav_*" callback routes bound to the same RPCs as
+// the commands, so the home message is edited in place into the demo screen.
+// Every demo screen carries a "Home" button (callback "nav_home") that edits
+// the message back into the home screen.
 service MenuService {
-  rpc UpdateCount(UpdateCountRequest) returns (UpdateCountResponse) {
+  // Home /start shows the home screen; every demo screen navigates back with
+  // the "nav_home" callback. The home screen always carries a banner photo,
+  // so returning from a photo screen replaces the media instead of leaving
+  // the previous image behind.
+  rpc Home(HomeRequest) returns (HomeResponse) {
     option (sphere.options.options) = {
       key: "bot"
       extra: {
@@ -14,10 +28,152 @@ service MenuService {
       }
       extra: {
         key: "callback_query"
-        value: "start"
+        value: "nav_home"
       }
     };
   }
+
+  // Counter /counter shows a counter menu whose keyboard changes with the
+  // value: a single "+1" button at zero, and "-1/+1" plus "Reset" once the
+  // counter has moved. The "count" buttons call back into UpdateCount and
+  // re-render the menu with an edited message.
+  rpc Counter(CounterRequest) returns (CounterResponse) {
+    option (sphere.options.options) = {
+      key: "bot"
+      extra: {
+        key: "command"
+        value: "counter"
+      }
+      extra: {
+        key: "callback_query"
+        value: "nav_counter"
+      }
+    };
+  }
+
+  rpc UpdateCount(UpdateCountRequest) returns (UpdateCountResponse) {
+    option (sphere.options.options) = {
+      key: "bot"
+      extra: {
+        key: "callback_query"
+        value: "count"
+      }
+    };
+  }
+
+  // ShowPhoto /photo sends a photo; its "photo" buttons demonstrate editing
+  // an existing media message: swapping the picture (EditMessageMedia) or
+  // rewriting the caption in place (EditMessageCaption).
+  rpc ShowPhoto(ShowPhotoRequest) returns (ShowPhotoResponse) {
+    option (sphere.options.options) = {
+      key: "bot"
+      extra: {
+        key: "command"
+        value: "photo"
+      }
+      extra: {
+        key: "callback_query"
+        value: "nav_photo"
+      }
+    };
+  }
+
+  rpc EditPhoto(EditPhotoRequest) returns (EditPhotoResponse) {
+    option (sphere.options.options) = {
+      key: "bot"
+      extra: {
+        key: "callback_query"
+        value: "photo"
+      }
+    };
+  }
+
+  // ShowMenu /menu shows a card whose keyboard size and image can be changed
+  // from its own buttons: it starts text-only, "image" upgrades the card to a
+  // photo in place (EditMessageMedia works on plain text messages too), and
+  // "size_1..3" re-renders the keyboard with 1, 2 or 3 item buttons. Picking
+  // an item works on both card variants — the sender picks a text edit or a
+  // caption edit from the original message type automatically.
+  rpc ShowMenu(ShowMenuRequest) returns (ShowMenuResponse) {
+    option (sphere.options.options) = {
+      key: "bot"
+      extra: {
+        key: "command"
+        value: "menu"
+      }
+      extra: {
+        key: "callback_query"
+        value: "nav_menu"
+      }
+    };
+  }
+
+  rpc EditMenu(EditMenuRequest) returns (EditMenuResponse) {
+    option (sphere.options.options) = {
+      key: "bot"
+      extra: {
+        key: "callback_query"
+        value: "menu"
+      }
+    };
+  }
+
+  // Catalog /catalog renders one page of the demo catalog. The home screen's
+  // catalog button and the pagination row both call back into it with a page
+  // number; item rows open the detail page (CatalogItem), carrying the item
+  // id plus the originating page so "Back" returns to the same list page.
+  // The detail page also has a quantity stepper whose count round-trips in
+  // the callback payload — the same payload pattern a shop flow uses for
+  // product id + quantity.
+  rpc Catalog(CatalogRequest) returns (CatalogResponse) {
+    option (sphere.options.options) = {
+      key: "bot"
+      extra: {
+        key: "command"
+        value: "catalog"
+      }
+      extra: {
+        key: "callback_query"
+        value: "catalog"
+      }
+    };
+  }
+
+  rpc CatalogItem(CatalogItemRequest) returns (CatalogItemResponse) {
+    option (sphere.options.options) = {
+      key: "bot"
+      extra: {
+        key: "callback_query"
+        value: "catalog_item"
+      }
+    };
+  }
+
+  // Help /help replies with text and an inline URL button, plus the home
+  // button shared by every screen.
+  rpc Help(HelpRequest) returns (HelpResponse) {
+    option (sphere.options.options) = {
+      key: "bot"
+      extra: {
+        key: "command"
+        value: "help"
+      }
+      extra: {
+        key: "callback_query"
+        value: "nav_help"
+      }
+    };
+  }
+}
+
+message HomeRequest {}
+
+message HomeResponse {}
+
+message CounterRequest {}
+
+message CounterResponse {
+  int64 value = 1;
 }
 
 message UpdateCountRequest {
@@ -27,4 +183,79 @@ message UpdateCountRequest {
 
 message UpdateCountResponse {
   int64 value = 1;
+}
+
+message ShowPhotoRequest {}
+
+message ShowPhotoResponse {
+  string photo_url = 1;
+  string caption = 2;
+}
+
+message EditPhotoRequest {
+  string action = 1;
+}
+
+message EditPhotoResponse {
+  string photo_url = 1;
+  string caption = 2;
+}
+
+message ShowMenuRequest {}
+
+message ShowMenuResponse {
+  int64 size = 1;
+  string photo_url = 2;
+  string caption = 3;
+}
+
+message EditMenuRequest {
+  // "image" attaches the photo, "size_1".."size_3" set the item-button count,
+  // "pick_0".."pick_2" select an item. The size is carried in every payload so
+  // a pick keeps the current keyboard layout.
+  string action = 1;
+  int64 size = 2;
+}
+
+message EditMenuResponse {
+  int64 size = 1;
+  string photo_url = 2; // empty renders a text-only card
+  string caption = 3;
+}
+
+message CatalogRequest {
+  int64 page = 1;
+}
+
+message CatalogResponse {
+  int64 page = 1;
+  int64 total_pages = 2;
+  repeated CatalogEntry items = 3;
+}
+
+message CatalogEntry {
+  int64 id = 1;
+  string name = 2;
+  string description = 3;
+}
+
+message CatalogItemRequest {
+  int64 id = 1;
+  int64 page = 2;  // list page to return to with "Back"
+  int64 count = 3; // quantity stepper state
+}
+
+message CatalogItemResponse {
+  int64 id = 1;
+  int64 page = 2;
+  int64 count = 3;
+  string name = 4;
+  string description = 5;
+}
+
+message HelpRequest {}
+
+message HelpResponse {
+  string text = 1;
+  string url = 2;
 }

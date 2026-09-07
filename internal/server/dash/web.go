@@ -16,24 +16,26 @@ import (
 	"github.com/go-sphere/sphere/server/middleware/auth"
 	"github.com/go-sphere/sphere/server/middleware/ratelimiter"
 	"github.com/go-sphere/sphere/server/middleware/selector"
-	"github.com/go-sphere/sphere/storage"
+	"github.com/go-sphere/sphere/storage/fileserver"
 )
 
 type Web struct {
-	config    Config
-	acl       *acl.ACL
-	engine    httpx.Engine
-	service   *dash.Service
-	sharedSvc *shared.Service
+	config     Config
+	acl        *acl.ACL
+	engine     httpx.Engine
+	service    *dash.Service
+	sharedSvc  *shared.Service
+	fileServer *fileserver.FileServer
 }
 
-func NewWebServer(conf Config, storage storage.CDNStorage, service *dash.Service) *Web {
+func NewWebServer(conf Config, fileServer *fileserver.FileServer, service *dash.Service) *Web {
 	return &Web{
-		config:    conf,
-		acl:       acl.NewACL(),
-		engine:    httpsrv.NewGinServer("dash", conf.HTTP.Address),
-		service:   service,
-		sharedSvc: shared.NewService(storage, "dash"),
+		config:     conf,
+		acl:        acl.NewACL(),
+		engine:     httpsrv.NewGinServer("dash", conf.HTTP.Address),
+		service:    service,
+		sharedSvc:  shared.NewService(fileServer, "dash"),
+		fileServer: fileServer,
 	}
 }
 
@@ -71,6 +73,11 @@ func (w *Web) Start(ctx context.Context) error {
 	sharedv1.RegisterStorageServiceHTTPServer(needAuthRoute, w.sharedSvc)
 	sharedv1.RegisterTestServiceHTTPServer(api, w.sharedSvc)
 
+	// 文件上传下载路由, 上传使用一次性 `key` 鉴权, 下载无需鉴权
+	// 挂在 /files 前缀下, 避免 catch-all 与 /api 静态路由冲突
+	w.fileServer.RegisterFileUploader(api.Group("/files"))
+	w.fileServer.RegisterFileDownloader(api.Group("/files"))
+
 	authRoute := api.Group("/", NewSessionMetaData())
 	// 根据元数据限定中间件作用范围
 	rateLimiter := ratelimiter.NewRateLimiterByClientIP(time.Second, 5, time.Hour)
@@ -86,7 +93,6 @@ func (w *Web) Start(ctx context.Context) error {
 			rateLimiter,
 		)...,
 	)
-	RegisterPureRute(authRoute)
 	dashv1.RegisterAuthServiceHTTPServer(authRoute, w.service)
 
 	adminRoute := needAuthRoute.Group("/", w.withPermission(dash.PermissionAdmin))

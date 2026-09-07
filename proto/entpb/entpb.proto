@@ -54,23 +54,3 @@ message KeyValueStore {
 
   int64 updated_at = 5;
 }
-
-message User {
-  int64 id = 1;
-
-  string username = 2;
-
-  string nickname = 3;
-
-  string remark = 4;
-
-  string avatar = 5;
-
-  uint64 flags = 6;
-
-  int64 created_at = 7;
-
-  int64 updated_at = 8;
-
-  string password = 9;
-}

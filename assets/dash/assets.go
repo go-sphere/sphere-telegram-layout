@@ -7,7 +7,8 @@ import "embed"
 // IMPORTANT:
 // All files in the subtree rooted at that directory are embedded (recursively), except that files with names beginning with ‘.’ or ‘_’ are excluded.
 
-// You can `git clone https://github.com/pure-admin/vue-pure-admin.git $(DASH_DIR)` to get the dash project
+// Put the dashboard build output in $(DASH_DIR) (see Makefile) and run
+// `make build/assets` to copy it into dashboard/dist.
 
 //go:embed dashboard/dist
 var Assets embed.FS

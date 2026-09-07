@@ -2,7 +2,13 @@ package bot
 
 import "github.com/go-sphere/telegram-bot/telegram"
 
-func NewButtonX[T any](text string, extra *telegram.MethodExtraData, data T) telegram.Button {
+// NewButtonX builds an inline keyboard button carrying generated route metadata.
+// The route comes from the generated service contract (ExtraBotData*), and the
+// payload is produced by telegram.MarshalData, so the marshaled callback data
+// must fit Telegram's 64-byte limit. The error is surfaced rather than
+// swallowed, so an oversized payload fails at encode time instead of at the
+// Telegram API.
+func NewButtonX[T any](text string, extra *telegram.MethodExtraData, data T) (telegram.Button, error) {
 	return telegram.NewButton(text, extra.CallbackQuery, data)
 }
 

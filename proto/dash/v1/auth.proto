@@ -6,19 +6,17 @@ import "buf/validate/validate.proto";
 import "google/api/annotations.proto";
 import "sphere/errors/errors.proto";
 
-// https://github.com/pure-admin/pure-admin-thin/blob/main/src/api/user.ts
-
 service AuthService {
   rpc LoginWithPassword(LoginWithPasswordRequest) returns (LoginWithPasswordResponse) {
     option (google.api.http) = {
-      post: "/api/login"
+      post: "/api/auth/login"
       body: "*"
     };
   }
 
   rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse) {
     option (google.api.http) = {
-      post: "/api/refresh-token"
+      post: "/api/auth/refresh"
       body: "*"
     };
   }
@@ -30,23 +28,22 @@ message LoginWithPasswordRequest {
 }
 
 message LoginWithPasswordResponse {
-  string avatar = 1;
-  string username = 2;
-  repeated string roles = 3;
-  repeated string permissions = 4;
-  string accessToken = 5;
-  string refreshToken = 6;
-  string expires = 7;
+  string access_token = 1 [json_name = "access_token"];
+  string refresh_token = 2 [json_name = "refresh_token"];
+  int64 expires_at = 3 [json_name = "expires_at"];
 }
 
 message RefreshTokenRequest {
-  string refreshToken = 1 [(buf.validate.field).required = true];
+  string refresh_token = 1 [
+    json_name = "refresh_token",
+    (buf.validate.field).required = true
+  ];
 }
 
 message RefreshTokenResponse {
-  string accessToken = 1;
-  string refreshToken = 2;
-  string expires = 3;
+  string access_token = 1 [json_name = "access_token"];
+  string refresh_token = 2 [json_name = "refresh_token"];
+  int64 expires_at = 3 [json_name = "expires_at"];
 }
 
 enum AuthError {
@@ -55,6 +52,7 @@ enum AuthError {
   AUTH_ERROR_UNSPECIFIED = 0;
   AUTH_ERROR_INVALID_CREDENTIALS = 1000 [(sphere.errors.options) = {
     status: 401
-    message: "密码错误"
+    reason: "INVALID_CREDENTIALS"
+    message: "invalid username or password"
   }];
 }

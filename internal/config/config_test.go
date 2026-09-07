@@ -8,10 +8,10 @@ import (
 
 func TestNewEmptyConfigProvidesUsableDefaults(t *testing.T) {
 	config := NewEmptyConfig()
-	if config.Dash.AuthJWT == "" || config.Dash.RefreshJWT == "" || config.API.JWT == "" {
+	if config.Dash.AuthJWT == "" || config.Dash.RefreshJWT == "" {
 		t.Fatal("generated authentication secrets must be non-empty")
 	}
-	if config.Dash.AuthJWT == config.Dash.RefreshJWT || config.Dash.AuthJWT == config.API.JWT || config.Dash.RefreshJWT == config.API.JWT {
+	if config.Dash.AuthJWT == config.Dash.RefreshJWT {
 		t.Fatal("generated authentication secrets must be independent")
 	}
 	if config.Database.AutoMigrateDrop {
@@ -27,13 +27,13 @@ func TestNewConfigValidatesRequiredSecrets(t *testing.T) {
 	}{
 		{
 			name:    "missing dashboard secrets",
-			content: `{"api":{"jwt":"api-secret"}}`,
+			content: `{}`,
 			wantErr: "dash auth_jwt and refresh_jwt must be non-empty",
 		},
 		{
-			name:    "missing API secret",
-			content: `{"dash":{"auth_jwt":"auth-secret","refresh_jwt":"refresh-secret"}}`,
-			wantErr: "api jwt must be non-empty",
+			name:    "missing refresh secret",
+			content: `{"dash":{"auth_jwt":"auth-secret"}}`,
+			wantErr: "dash auth_jwt and refresh_jwt must be non-empty",
 		},
 	}
 	for _, tt := range tests {
@@ -51,8 +51,7 @@ func TestNewConfigValidatesRequiredSecrets(t *testing.T) {
 
 func TestNewConfigAppliesLogLevelDefault(t *testing.T) {
 	config, err := NewConfig(writeConfig(t, `{
-		"dash":{"auth_jwt":"auth-secret","refresh_jwt":"refresh-secret"},
-		"api":{"jwt":"api-secret"}
+		"dash":{"auth_jwt":"auth-secret","refresh_jwt":"refresh-secret"}
 	}`))
 	if err != nil {
 		t.Fatalf("NewConfig() error = %v", err)

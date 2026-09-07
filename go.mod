@@ -20,6 +20,7 @@ require (
 	github.com/go-sphere/sphere v0.0.6-0.20260906140008-0292cf303e83
 	github.com/go-sphere/telegram-bot v0.0.2
 	github.com/go-sql-driver/mysql v1.10.1
+	github.com/go-telegram/bot v1.25.0
 	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/google/uuid v1.6.0
 	github.com/google/wire v0.7.0
@@ -66,7 +67,6 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.30.4 // indirect
 	github.com/go-sphere/jsoncompressor v0.0.3 // indirect
-	github.com/go-telegram/bot v1.18.0 // indirect
 	github.com/goccy/go-json v0.10.6 // indirect
 	github.com/goccy/go-yaml v1.19.2 // indirect
 	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
@@ -89,8 +89,6 @@ require (
 	github.com/quic-go/quic-go v0.62.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
-	github.com/swaggo/files v1.0.1 // indirect
-	github.com/swaggo/http-swagger v1.3.4 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.2 // indirect
 	github.com/yitter/idgenerator-go v1.3.3 // indirect
@@ -117,3 +115,5 @@ require (
 	modernc.org/memory v1.12.1 // indirect
 	modernc.org/sqlite v1.58.0 // indirect
 )
+
+replace github.com/go-sphere/telegram-bot => ../telegram-bot

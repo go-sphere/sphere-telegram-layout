@@ -2,7 +2,6 @@ package render
 
 import (
 	"github.com/go-sphere/sphere-telegram-layout/api/entpb"
-	sharedv1 "github.com/go-sphere/sphere-telegram-layout/api/shared/v1"
 	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/ent"
 	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/render/entmap"
 )
@@ -15,17 +14,6 @@ func (r *Render) AdminLite(value *ent.Admin) *entpb.Admin {
 	}
 }
 
-func (r *Render) UserLite(value *ent.User) *sharedv1.User {
-	if value == nil {
-		return nil
-	}
-	return &sharedv1.User{
-		Id:       value.ID,
-		Username: value.Username,
-		Avatar:   r.storage.GenerateURL(value.Avatar),
-	}
-}
-
 func (r *Render) Admin(value *ent.Admin) *entpb.Admin {
 	val, _ := entmap.ToProtoAdmin(value)
 	if val == nil {
@@ -34,10 +22,6 @@ func (r *Render) Admin(value *ent.Admin) *entpb.Admin {
 	val.Password = ""
 	val.Avatar = r.storage.GenerateURL(value.Avatar)
 	return val
-}
-
-func (r *Render) User(value *ent.User) *sharedv1.User {
-	return r.UserLite(value)
 }
 
 func (r *Render) AdminSession(value *ent.AdminSession) *entpb.AdminSession {
