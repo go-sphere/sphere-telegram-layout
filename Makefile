@@ -175,7 +175,7 @@ check: ## Run dependency, lint, and test checks
 
 # ---------- Install Tools ----------
 install: ## Install dependencies tools
-	$(GO_INSTALL) github.com/google/wire/cmd/wire@latest
+	$(GO_INSTALL) github.com/wireinject/wire/cmd/wire@latest
 	$(GO_INSTALL) github.com/swaggo/swag/cmd/swag@latest
 	$(GO_INSTALL) github.com/bufbuild/buf/cmd/buf@latest
 	$(GO_INSTALL) github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
