@@ -165,9 +165,9 @@ with `github.com/go-sphere/sphere` v0.0.6. The Gin adapter is gone.
 - `internal/pkg/httpsrv` exports `NewServer(name, addr, backend) httpx.Engine`,
   backed by `stdx` over `net/http`; access logging, panic recovery, and CORS are
   registered on the engine so they also cover paths no route matched.
-- Dashboard authentication prefers the `Authorization` header and falls back to
-  the auth cookie written at login/refresh, for browser requests that cannot set
-  headers.
+- Dashboard authentication reads the `Authorization: Bearer` header only: login
+  and refresh return the tokens in the response body and no cookie is written,
+  so there is no browser-held credential to clear on logout.
 - The bot server keeps its own transport and its `go-sphere/telegram-bot`
   dependency; only the HTTP servers changed engines.
 
