@@ -164,3 +164,4 @@ fabric.properties
 /api/
 /config.json
 /config_gen.json
+go.work.sum

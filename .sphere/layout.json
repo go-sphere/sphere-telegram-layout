@@ -8,7 +8,7 @@
   },
   "capabilities": [
     "protobuf",
-    "gin-http",
+    "stdx-http",
     "ent",
     "wire",
     "swagger",
@@ -32,6 +32,7 @@
       "buf.yaml",
       "cmd/app/Dockerfile",
       "cmd/tools/**",
+      "docs/LAYOUT_CONTRACT.md",
       "docs/docs.*.go",
       "internal/pkg/app/**",
       "internal/pkg/httpsrv/**",

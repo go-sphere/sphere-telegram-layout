@@ -32,7 +32,7 @@ func NewWebServer(conf Config, fileServer *fileserver.FileServer, service *dash.
 	return &Web{
 		config:     conf,
 		acl:        acl.NewACL(),
-		engine:     httpsrv.NewGinServer("dash", conf.HTTP.Address),
+		engine:     httpsrv.NewServer("dash", conf.HTTP.Address),
 		service:    service,
 		sharedSvc:  shared.NewService(fileServer, "dash"),
 		fileServer: fileServer,

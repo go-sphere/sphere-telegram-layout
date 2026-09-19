@@ -1,7 +1,11 @@
 # ---------- Makefile for Sphere Project ----------
-MODULE          := $(shell go list -m)
+MODULE          := $(shell GOWORK=off go list -m)
 MODULE_NAME     ?= $(lastword $(subst /, ,$(MODULE)))
 DIRECT_DEPS_TEMPLATE := {{if and (not .Main) (not .Indirect) (not .Replace)}}{{.Path}}{{end}}
+
+# Resolve go-sphere modules straight from GitHub, bypassing the module proxy
+# and its cached "@latest", which lags behind freshly pushed tags.
+DIRECT_ORIGIN := GOPRIVATE=github.com/go-sphere/*
 
 # ---------- Build Config ----------
 GIT_TAG         ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
@@ -147,9 +151,9 @@ deploy: ## Deploy binary
 	./devops/deploy/deploy.sh
 
 deps-update: ## Update direct Go dependencies
-	@deps="$$(GOWORK=off $(GO) list -m -f '$(DIRECT_DEPS_TEMPLATE)' all)"; \
-	if [ -n "$$deps" ]; then GOWORK=off $(GO) get -u $$deps; fi
-	GOWORK=off $(GO) mod tidy
+	@deps="$$(GOWORK=off $(DIRECT_ORIGIN) $(GO) list -m -f '$(DIRECT_DEPS_TEMPLATE)' all)"; \
+	if [ -n "$$deps" ]; then GOWORK=off $(DIRECT_ORIGIN) $(GO) get -u $$deps; fi
+	GOWORK=off $(DIRECT_ORIGIN) $(GO) mod tidy
 
 tidy: ## Tidy Go module dependencies
 	GOWORK=off $(GO) mod tidy
