@@ -46,7 +46,7 @@ INTERNAL_TOOLS  ?= $(GO) run -tags spheretools
 
 .PHONY: \
 	build build/all clean\
-	gen/wire gen/conf gen/db gen/proto gen/docs gen/all gen/dts\
+	gen/wire gen/conf gen/db gen/deps gen/proto gen/docs gen/all gen/dts\
 	build/assets build/docker build/multi-docker \
 	run run/race deploy deps-update tidy test lint fmt check \
 	install init help
@@ -82,9 +82,13 @@ gen/conf: ## Generate example config; write config.json only if missing
 gen/db: ## Generate ent code
 	$(INTERNAL_TOOLS) ./cmd/tools/gen/ent
 
-gen/proto: gen/db ## Generate proto files and run protoc plugins
+# Refresh the buf dependencies in buf.lock. Kept out of gen/proto so that
+# generation itself is reproducible from the committed lock; `init` runs it.
+gen/deps: ## Refresh buf dependencies
 	$(BUF_CLI) dep update
 	$(BUF_CLI) dep prune
+
+gen/proto: gen/db ## Generate proto files and run protoc plugins
 	$(BUF_CLI) generate
 	$(BUF_CLI) generate --template buf.binding.yaml
 	$(INTERNAL_TOOLS) ./cmd/tools/gen/entmap
@@ -194,7 +198,7 @@ init: ## Init all dependencies
 	$(GO) mod download
 	$(MAKE) install
 	$(MAKE) gen/all
-	$(BUF_CLI) dep update
+	$(MAKE) gen/deps
 	$(GO) mod tidy
 	$(MAKE) gen/conf
 

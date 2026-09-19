@@ -1,4 +1,4 @@
-name: Test
+name: CI
 
 permissions:
   contents: read
@@ -18,8 +18,17 @@ jobs:
         with:
           go-version-file: go.mod
           cache-dependency-path: "**/go.sum"
+      # `make init` would also refresh buf dependencies (buf dep update) and
+      # the example config; CI wants the committed buf.lock instead, so it
+      # installs the tools and generates in explicit steps.
+      - name: Install tools
+        run: make install
       - name: Generate
-        run: make init
+        run: make gen/all
+      # Generation must not leave go.mod/go.sum behind: a diff means the
+      # template's declarations no longer cover what its generators emit.
+      - name: Check generated dependencies
+        run: git diff --exit-code -- go.mod go.sum
       - name: Build
         run: make build
       - name: Test
