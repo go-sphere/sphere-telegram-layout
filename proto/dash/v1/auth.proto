@@ -28,22 +28,19 @@ message LoginWithPasswordRequest {
 }
 
 message LoginWithPasswordResponse {
-  string access_token = 1 [json_name = "access_token"];
-  string refresh_token = 2 [json_name = "refresh_token"];
-  int64 expires_at = 3 [json_name = "expires_at"];
+  string access_token = 1;
+  string refresh_token = 2;
+  int64 expires_at = 3;
 }
 
 message RefreshTokenRequest {
-  string refresh_token = 1 [
-    json_name = "refresh_token",
-    (buf.validate.field).required = true
-  ];
+  string refresh_token = 1 [(buf.validate.field).required = true];
 }
 
 message RefreshTokenResponse {
-  string access_token = 1 [json_name = "access_token"];
-  string refresh_token = 2 [json_name = "refresh_token"];
-  int64 expires_at = 3 [json_name = "expires_at"];
+  string access_token = 1;
+  string refresh_token = 2;
+  int64 expires_at = 3;
 }
 
 enum AuthError {
