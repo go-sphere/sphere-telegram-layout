@@ -36,6 +36,10 @@ GO_RUN_RACE     ?= CGO_ENABLED=1 $(GO) run -race -ldflags "$(LD_FLAGS)" -tags=$(
 GO_BUILD        ?= CGO_ENABLED=0 $(GO) build -trimpath -ldflags "$(LD_FLAGS)" -tags=$(GO_TAGS)
 GO_INSTALL      ?= $(GO) install
 
+# ---------- Tool Versions ----------
+# Pinned generator and tool versions, shared with scripts/verify-codegen.sh.
+include codegen.versions
+
 # ---------- Go Tools ----------
 BUF_CLI         ?= buf
 SWAG_CLI        ?= swag
@@ -182,17 +186,17 @@ check: ## Run dependency, lint, and test checks
 	$(MAKE) test
 
 # ---------- Install Tools ----------
-install: ## Install dependencies tools
-	$(GO_INSTALL) github.com/wireinject/wire/cmd/wire@latest
-	$(GO_INSTALL) github.com/swaggo/swag/cmd/swag@latest
-	$(GO_INSTALL) github.com/bufbuild/buf/cmd/buf@latest
-	$(GO_INSTALL) github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
-	$(GO_INSTALL) google.golang.org/protobuf/cmd/protoc-gen-go@latest
-	$(GO_INSTALL) github.com/go-sphere/sphere-cli@latest
-	$(GO_INSTALL) github.com/go-sphere/protoc-gen-route@latest
-	$(GO_INSTALL) github.com/go-sphere/protoc-gen-sphere@latest
-	$(GO_INSTALL) github.com/go-sphere/protoc-gen-sphere-errors@latest
-	$(GO_INSTALL) github.com/go-sphere/protoc-gen-sphere-binding@latest
+install: ## Install pinned development tools (versions in codegen.versions)
+	$(GO_INSTALL) github.com/wireinject/wire/cmd/wire@$(WIRE_VERSION)
+	$(GO_INSTALL) github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION)
+	$(GO_INSTALL) github.com/bufbuild/buf/cmd/buf@$(BUF_VERSION)
+	$(GO_INSTALL) github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
+	$(GO_INSTALL) google.golang.org/protobuf/cmd/protoc-gen-go@$(PROTOC_GEN_GO_VERSION)
+	$(GO_INSTALL) github.com/go-sphere/sphere-cli@$(SPHERE_CLI_VERSION)
+	$(GO_INSTALL) github.com/go-sphere/protoc-gen-route@$(PROTOC_GEN_ROUTE_VERSION)
+	$(GO_INSTALL) github.com/go-sphere/protoc-gen-sphere@$(PROTOC_GEN_SPHERE_VERSION)
+	$(GO_INSTALL) github.com/go-sphere/protoc-gen-sphere-errors@$(PROTOC_GEN_SPHERE_ERRORS_VERSION)
+	$(GO_INSTALL) github.com/go-sphere/protoc-gen-sphere-binding@$(PROTOC_GEN_SPHERE_BINDING_VERSION)
 
 init: ## Init all dependencies
 	$(GO) mod download

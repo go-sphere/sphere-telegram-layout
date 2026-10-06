@@ -8,6 +8,9 @@ BIN_DIR=$(mktemp -d)
 SOURCE_MODE=${SPHERE_CODEGEN_SOURCE:-auto}
 trap 'rm -rf "$BIN_DIR"' EXIT
 
+# shellcheck source=../codegen.versions
+source "$ROOT_DIR/codegen.versions"
+
 export GOBIN="$BIN_DIR"
 export PATH="$BIN_DIR:$PATH"
 
@@ -36,10 +39,10 @@ build_local_plugins() {
 }
 
 install_released_plugins() {
-	go install github.com/go-sphere/protoc-gen-sphere@v0.0.5
-	go install github.com/go-sphere/protoc-gen-sphere-binding@v0.0.5
-	go install github.com/go-sphere/protoc-gen-sphere-errors@v0.0.3
-	go install github.com/go-sphere/protoc-gen-route@v0.0.2
+	go install "github.com/go-sphere/protoc-gen-sphere@$PROTOC_GEN_SPHERE_VERSION"
+	go install "github.com/go-sphere/protoc-gen-sphere-binding@$PROTOC_GEN_SPHERE_BINDING_VERSION"
+	go install "github.com/go-sphere/protoc-gen-sphere-errors@$PROTOC_GEN_SPHERE_ERRORS_VERSION"
+	go install "github.com/go-sphere/protoc-gen-route@$PROTOC_GEN_ROUTE_VERSION"
 }
 
 case "$SOURCE_MODE" in
@@ -60,10 +63,8 @@ auto)
 	;;
 esac
 
-go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11
-if ! command -v buf >/dev/null 2>&1; then
-	go install github.com/bufbuild/buf/cmd/buf@v1.72.0
-fi
+go install "google.golang.org/protobuf/cmd/protoc-gen-go@$PROTOC_GEN_GO_VERSION"
+go install "github.com/bufbuild/buf/cmd/buf@$BUF_VERSION"
 
 cd "$ROOT_DIR"
 

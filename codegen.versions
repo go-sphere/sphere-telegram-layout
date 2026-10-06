@@ -1,0 +1,27 @@
+# Single source of truth for the tool versions this layout generates code with.
+#
+# Read by the Makefile (`include codegen.versions`, used by `make install`) and
+# by scripts/verify-codegen.sh (`source`), so keep it to plain KEY=value lines:
+# no spaces around `=`, no quotes, no inline comments.
+#
+# Every tool whose version can change generated output is pinned here. Bumping
+# a generator changes what `make gen/all` writes, so a bump must be committed
+# together with a refreshed baseline (`make codegen-baseline`).
+
+# go-sphere protoc plugins (api/**)
+PROTOC_GEN_SPHERE_VERSION=v0.0.5
+PROTOC_GEN_SPHERE_BINDING_VERSION=v0.0.5
+PROTOC_GEN_SPHERE_ERRORS_VERSION=v0.0.3
+PROTOC_GEN_ROUTE_VERSION=v0.0.2
+
+# Protobuf toolchain (api/**)
+BUF_VERSION=v1.73.0
+PROTOC_GEN_GO_VERSION=v1.36.12
+
+# Other generators (swagger/**, cmd/app/wire_gen.go)
+SWAG_VERSION=v1.16.6
+WIRE_VERSION=v0.7.1
+
+# Formatter run by `make fmt` (part of `make gen/all`) and the CLI
+GOLANGCI_LINT_VERSION=v2.14.0
+SPHERE_CLI_VERSION=v0.0.3

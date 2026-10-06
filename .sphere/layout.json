@@ -32,6 +32,7 @@
       "buf.yaml",
       "cmd/app/Dockerfile",
       "cmd/tools/**",
+      "codegen.versions",
       "docs/LAYOUT_CONTRACT.md",
       "docs/docs.*.go",
       "internal/pkg/app/**",

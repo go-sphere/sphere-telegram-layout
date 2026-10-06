@@ -19,8 +19,6 @@ jobs:
         with:
           go-version-file: go.mod
           cache-dependency-path: "**/go.sum"
-      - name: Install Buf
-        run: go install github.com/bufbuild/buf/cmd/buf@v1.72.0
       - name: Verify released generator matrix
         env:
           SPHERE_CODEGEN_SOURCE: release
