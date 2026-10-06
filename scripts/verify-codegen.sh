@@ -36,10 +36,10 @@ build_local_plugins() {
 }
 
 install_released_plugins() {
-	go install github.com/go-sphere/protoc-gen-sphere@v0.0.3
-	go install github.com/go-sphere/protoc-gen-sphere-binding@v0.0.4
-	go install github.com/go-sphere/protoc-gen-sphere-errors@v0.0.2
-	go install github.com/go-sphere/protoc-gen-route@v0.0.1
+	go install github.com/go-sphere/protoc-gen-sphere@v0.0.5
+	go install github.com/go-sphere/protoc-gen-sphere-binding@v0.0.5
+	go install github.com/go-sphere/protoc-gen-sphere-errors@v0.0.3
+	go install github.com/go-sphere/protoc-gen-route@v0.0.2
 }
 
 case "$SOURCE_MODE" in
