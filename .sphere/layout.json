@@ -64,6 +64,7 @@
       "config_gen.json",
       "buf.lock",
       "go.sum",
+      "codegen.sha256",
       "cmd/app/wire_gen.go",
       "proto/entpb/entpb.proto",
       "internal/pkg/database/ent/**",

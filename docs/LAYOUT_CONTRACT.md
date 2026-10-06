@@ -97,6 +97,8 @@ base is confirmed, create the version-1 lock and follow the normal update flow.
 - Keep README capabilities and `make help` output accurate.
 - Keep `.sphere/layout.json` ownership patterns non-overlapping.
 - Regenerate all derived outputs after schema, Proto, or Wire changes.
+- Pin generator versions only in `codegen.versions`; after Proto changes or a
+  version bump, refresh `codegen.sha256` with `make codegen-baseline`.
 - Run `make check` and `make build` from a clean checkout.
 - Verify provider-specific dependencies exist only in provider-specific layouts.
 - Document breaking template changes; never apply database deletion migrations

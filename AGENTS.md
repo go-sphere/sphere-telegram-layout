@@ -30,6 +30,9 @@ Use the Makefile as the workflow contract:
 - `make test` runs the Go tests.
 - `make lint` runs non-mutating Go and Buf checks.
 - `make check` verifies dependency, formatting, lint, and test state.
+- `make codegen-check` compares generated `api/**` with the tracked
+  `codegen.sha256` baseline; refresh it with `make codegen-baseline` after
+  Proto changes or a generator bump in `codegen.versions`, and commit it.
 - `make build` builds the local binary.
 
 After changing Proto, schemas, constructors, or provider sets, run

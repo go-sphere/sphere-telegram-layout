@@ -47,6 +47,9 @@ Sphere build tool. Usage: make [target]
   build/multi-docker   Build and push multi-arch Docker images
   deploy               Run the project deploy script
   clean                Remove generated code and build artifacts
+  codegen-check        Compare generated api/** with the codegen.sha256 baseline
+  codegen-baseline     Record generated api/** digests in codegen.sha256
+  codegen-verify       Regenerate api/** with pinned plugins; check idempotency and baseline
 ```
 
 The template should remain usable with standard commands as well. `make` is a convenience layer over Go, Buf, Wire, Swag, Docker, and shell scripts.
@@ -153,6 +156,28 @@ or synchronizing a project with a newer layout revision.
 
 Files not explicitly classified by the contract are project-owned. This
 default prevents a layout update from overwriting application code.
+
+## Generator Versions and Codegen Baseline
+
+`codegen.versions` pins every tool `make install` installs: the go-sphere
+protoc plugins, Buf, protoc-gen-go, Swag, Wire, golangci-lint, and sphere-cli.
+Change versions only there; the Makefile and the codegen scripts both read it.
+
+Generated `api/**` is not committed, so `codegen.sha256` records the SHA-256
+of every generated `api/**` file as the tracked regression baseline:
+
+- `make codegen-check` compares the current `api/**` with the baseline.
+- `make codegen-verify` regenerates `api/**` with the pinned plugins in a
+  temporary tool directory and checks that the generated packages build, that
+  generation is idempotent, and that the output matches the baseline. The
+  Codegen workflow runs it on every push.
+- `make codegen-baseline` rewrites the baseline from the current `api/**`.
+
+After changing Proto files or bumping a generator, run
+`make install && make gen/all && make codegen-baseline` and commit
+`codegen.sha256` with the change, so reviewers see which generated files
+moved. A failing check without such a change means the installed tools do not
+match `codegen.versions`.
 
 ## Upgrade Notes
 
