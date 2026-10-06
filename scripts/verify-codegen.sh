@@ -9,7 +9,6 @@
 # SPHERE_CODEGEN_SOURCE selects where the go-sphere protoc plugins come from:
 #   release (default)  the versions pinned in codegen.versions
 #   local              build ../protoc-gen-* checkouts (plugin development)
-#   auto               local checkouts when all are present, else release
 # The baseline describes the pinned releases, so a mismatch in local mode shows
 # how unreleased plugin changes would alter this layout's output.
 
@@ -27,51 +26,24 @@ source "$ROOT_DIR/codegen.versions"
 export GOBIN="$BIN_DIR"
 export PATH="$BIN_DIR:$PATH"
 
-PLUGINS=(
-	protoc-gen-sphere
-	protoc-gen-sphere-binding
-	protoc-gen-sphere-errors
-	protoc-gen-route
-)
-
-build_local_plugins() {
-	local plugin
-	for plugin in "${PLUGINS[@]}"; do
-		if [[ ! -f "$ECOSYSTEM_DIR/$plugin/go.mod" ]]; then
-			return 1
-		fi
-	done
-
-	for plugin in "${PLUGINS[@]}"; do
-		(
-			cd "$ECOSYSTEM_DIR/$plugin"
-			go build -o "$BIN_DIR/$plugin" .
-		)
-	done
-}
-
-install_released_plugins() {
+case "$SOURCE_MODE" in
+release)
 	go install "github.com/go-sphere/protoc-gen-sphere@$PROTOC_GEN_SPHERE_VERSION"
 	go install "github.com/go-sphere/protoc-gen-sphere-binding@$PROTOC_GEN_SPHERE_BINDING_VERSION"
 	go install "github.com/go-sphere/protoc-gen-sphere-errors@$PROTOC_GEN_SPHERE_ERRORS_VERSION"
 	go install "github.com/go-sphere/protoc-gen-route@$PROTOC_GEN_ROUTE_VERSION"
-}
-
-case "$SOURCE_MODE" in
+	;;
 local)
-	build_local_plugins
-	;;
-release)
-	install_released_plugins
-	;;
-auto)
-	if ! build_local_plugins; then
-		SOURCE_MODE=release
-		install_released_plugins
-	fi
+	for plugin in protoc-gen-sphere protoc-gen-sphere-binding protoc-gen-sphere-errors protoc-gen-route; do
+		if [[ ! -f "$ECOSYSTEM_DIR/$plugin/go.mod" ]]; then
+			echo "SPHERE_CODEGEN_SOURCE=local needs a checkout at $ECOSYSTEM_DIR/$plugin" >&2
+			exit 1
+		fi
+		(cd "$ECOSYSTEM_DIR/$plugin" && go build -o "$BIN_DIR/$plugin" .)
+	done
 	;;
 *)
-	echo "unknown SPHERE_CODEGEN_SOURCE value: $SOURCE_MODE" >&2
+	echo "unknown SPHERE_CODEGEN_SOURCE value: $SOURCE_MODE (want release or local)" >&2
 	exit 1
 	;;
 esac
@@ -102,8 +74,8 @@ if [[ "$first_digest" != "$second_digest" ]]; then
 fi
 
 if ! scripts/codegen-digest.sh check; then
-	if [[ "$SOURCE_MODE" != release ]]; then
-		echo "note: plugins were built from local checkouts (SPHERE_CODEGEN_SOURCE=$SOURCE_MODE)," >&2
+	if [[ "$SOURCE_MODE" == local ]]; then
+		echo "note: plugins were built from local checkouts (SPHERE_CODEGEN_SOURCE=local)," >&2
 		echo "while $ROOT_DIR/codegen.sha256 records the releases pinned in codegen.versions." >&2
 	fi
 	exit 1
