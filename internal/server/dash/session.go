@@ -1,6 +1,8 @@
 package dash
 
 import (
+	"context"
+
 	"github.com/go-sphere/httpx"
 	"github.com/go-sphere/sphere-telegram-layout/internal/service/dash"
 )
@@ -10,8 +12,12 @@ import (
 func NewSessionMetaData() httpx.Middleware {
 	return func(next httpx.Handler) httpx.Handler {
 		return func(ctx httpx.Context) error {
-			ctx.Set(dash.AuthContextKeyIP, ctx.ClientIP())
-			ctx.Set(dash.AuthContextKeyUA, ctx.Header("User-Agent"))
+			// Both values go through SetContext into the standard context:
+			// httpx StateStore (ctx.Set) and context.Context are separate channels
+			// and the service layer only ever sees the latter.
+			stdCtx := context.WithValue(ctx.Context(), dash.AuthContextKeyIP, ctx.ClientIP())
+			stdCtx = context.WithValue(stdCtx, dash.AuthContextKeyUA, ctx.Header("User-Agent"))
+			ctx.SetContext(stdCtx)
 			return next(ctx)
 		}
 	}

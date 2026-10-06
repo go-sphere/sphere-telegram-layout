@@ -20,9 +20,19 @@ const (
 	RefreshTokenValidDuration = time.Hour * 24
 )
 
+// AuthContextKey is the type of the keys this package exchanges through the
+// standard context.Context. Built-in string keys are prohibited (staticcheck
+// SA1029): the string key space is shared by every package, so two packages
+// using "auth_ip" would silently overwrite each other.
+//
+// Both keys are injected by internal/server/dash.NewSessionMetaData through
+// httpx SetContext, not StateStore: ctx.Set writes a channel the service
+// layer cannot see.
+type AuthContextKey string
+
 const (
-	AuthContextKeyIP = "auth_ip"
-	AuthContextKeyUA = "auth_ua"
+	AuthContextKeyIP AuthContextKey = "auth_ip"
+	AuthContextKeyUA AuthContextKey = "auth_ua"
 )
 
 type AdminToken struct {

@@ -131,6 +131,36 @@ func TestWebAuthAndAdminEndpoints(t *testing.T) {
 	})
 }
 
+// TestWebLogin_PersistsSessionMetadata guards the hand-off between
+// NewSessionMetaData and the service: the IP and User-Agent must travel
+// through the standard context, or the stored session ends up without them.
+func TestWebLogin_PersistsSessionMetadata(t *testing.T) {
+	baseURL, _, db, cleanup := setupTestWebWithDB(t)
+	defer cleanup()
+
+	const userAgent = "sphere-telegram-layout-test/1.0"
+	status, body := doJSONRequest(t, http.MethodPost, baseURL+"/api/auth/login", map[string]string{
+		"username": testAdminUsername,
+		"password": testAdminPassword,
+	}, map[string]string{
+		"User-Agent": userAgent,
+	})
+	if status != http.StatusOK {
+		t.Fatalf("login status = %d, want %d, body=%s", status, http.StatusOK, body)
+	}
+
+	session, err := db.AdminSession.Query().Only(t.Context())
+	if err != nil {
+		t.Fatalf("query admin session: %v", err)
+	}
+	if session.IPAddress != "127.0.0.1" {
+		t.Fatalf("session ip_address = %q, want %q", session.IPAddress, "127.0.0.1")
+	}
+	if session.DeviceInfo != userAgent {
+		t.Fatalf("session device_info = %q, want %q", session.DeviceInfo, userAgent)
+	}
+}
+
 func TestWebServer_TokenUploadDownloadFlow(t *testing.T) {
 	_, fileServer, cleanup := setupTestWeb(t)
 	defer cleanup()
@@ -204,6 +234,13 @@ func TestWebServer_TokenUploadDownloadFlow(t *testing.T) {
 func setupTestWeb(t *testing.T) (string, *fileserver.FileServer, func()) {
 	t.Helper()
 
+	baseURL, fileServer, _, cleanup := setupTestWebWithDB(t)
+	return baseURL, fileServer, cleanup
+}
+
+func setupTestWebWithDB(t *testing.T) (string, *fileserver.FileServer, *ent.Client, func()) {
+	t.Helper()
+
 	addr := randomLocalAddress(t)
 	db := newMemoryDB(t)
 	insertDefaultAdmin(t, db)
@@ -246,7 +283,7 @@ func setupTestWeb(t *testing.T) (string, *fileserver.FileServer, func()) {
 		case <-time.After(time.Second):
 		}
 	}
-	return baseURL, fileServer, cleanup
+	return baseURL, fileServer, db, cleanup
 }
 
 func waitServerReady(t *testing.T, baseURL string, startErr <-chan error) {
