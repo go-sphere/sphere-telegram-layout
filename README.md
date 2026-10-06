@@ -203,6 +203,13 @@ A project generated from an earlier revision should merge
 auth seams, and the regenerated `api/**` outputs at its next layout sync, then
 run `make gen/all` and `make check`.
 
+The process timezone is now set explicitly: `cmd/app/main.go` calls
+`boot.InitTimezone(boot.DefaultTimezone)` (`Asia/Shanghai`) before startup and
+exits if the zone cannot be loaded. Newer sphere releases no longer set it from
+a package `init()`, so a project that keeps an older `main.go` runs in the host
+timezone after upgrading sphere. Merge `cmd/app/main.go` (it is `mixed`), then
+pass another IANA zone or delete the call to keep the host default.
+
 ## Replaceable Defaults
 
 The template uses Ent, httpx handlers on the stdx (net/http) engine, Wire, Swagger, and TypeScript generation because they provide a complete default path. Replacing one part should not require replacing Sphere itself.
