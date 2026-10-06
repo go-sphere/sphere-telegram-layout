@@ -162,9 +162,10 @@ with `github.com/go-sphere/sphere` v0.0.6. The Gin adapter is gone.
 
 - Generated `api/**` code and its error envelopes use the `httpz.*` types
   instead of the former `ginx.*` names.
-- `internal/pkg/httpsrv` exports `NewServer(name, addr, backend) httpx.Engine`,
-  backed by `stdx` over `net/http`; access logging, panic recovery, and CORS are
-  registered on the engine so they also cover paths no route matched.
+- `internal/pkg/httpsrv` exports `NewServer(name, addr string) httpx.Engine`,
+  backed by `stdx` over `net/http`; access logging (through the global `log`
+  package, tagged with `name`) and panic recovery are registered on the engine,
+  as is CORS via `httpsrv.UseCORS`, so they also cover paths no route matched.
 - Dashboard authentication reads the `Authorization: Bearer` header only: login
   and refresh return the tokens in the response body and no cookie is written,
   so there is no browser-held credential to clear on logout.
