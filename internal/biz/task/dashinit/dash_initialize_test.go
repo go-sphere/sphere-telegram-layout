@@ -8,6 +8,7 @@ import (
 	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/client"
 	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/ent"
 	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/ent/keyvaluestore"
+	"github.com/go-sphere/sphere-telegram-layout/internal/server/dash"
 	"github.com/go-sphere/sphere/utils/secure"
 )
 
@@ -32,7 +33,8 @@ func TestInitializeRecordsCompletionOnlyAfterAdminSeedSucceeds(t *testing.T) {
 		t.Fatalf("create failure trigger: %v", err)
 	}
 
-	initialize := NewDashInitialize(dao.NewDao(db))
+	seed := dash.SeedUserConfig{Username: "seed-admin", Password: "Seed#Pass1"}
+	initialize := NewDashInitialize(dao.NewDao(db), dash.Config{SeedUser: seed})
 	if err := initialize.Start(ctx); err == nil {
 		t.Fatal("expected admin seed failure")
 	}
@@ -50,10 +52,10 @@ func TestInitializeRecordsCompletionOnlyAfterAdminSeedSucceeds(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load seeded admin: %v", err)
 	}
-	if admin.Username != defaultAdminUsername {
+	if admin.Username != seed.Username {
 		t.Fatalf("seeded username = %q", admin.Username)
 	}
-	if !secure.IsPasswordMatch(defaultAdminPassword, admin.Password) {
+	if !secure.IsPasswordMatch(seed.Password, admin.Password) {
 		t.Fatal("seeded password is not the expected bcrypt hash")
 	}
 }

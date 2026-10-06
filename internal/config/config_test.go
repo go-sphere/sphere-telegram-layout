@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/go-sphere/sphere-telegram-layout/internal/server/dash"
 )
 
 func TestNewEmptyConfigProvidesUsableDefaults(t *testing.T) {
@@ -16,6 +18,9 @@ func TestNewEmptyConfigProvidesUsableDefaults(t *testing.T) {
 	}
 	if config.Database.AutoMigrateDrop {
 		t.Fatal("destructive database migration must be disabled by default")
+	}
+	if config.Dash.SeedUser.Username == "" || config.Dash.SeedUser.Password == "" {
+		t.Fatal("default seed-user settings must be non-empty")
 	}
 }
 
@@ -59,6 +64,41 @@ func TestNewConfigAppliesLogLevelDefault(t *testing.T) {
 	if got, want := config.Log.Level, "info"; got != want {
 		t.Errorf("Log.Level = %q, want %q", got, want)
 	}
+}
+
+func TestNewConfigLoadsSeedUserSettings(t *testing.T) {
+	t.Run("omitted seed user uses defaults", func(t *testing.T) {
+		config, err := NewConfig(writeConfig(t, `{
+			"dash":{"auth_jwt":"auth-secret","refresh_jwt":"refresh-secret"}
+		}`))
+		if err != nil {
+			t.Fatalf("NewConfig() error = %v", err)
+		}
+		if config.Dash.SeedUser.Username != dash.DefaultSeedUsername {
+			t.Errorf("SeedUser.Username = %q, want %q", config.Dash.SeedUser.Username, dash.DefaultSeedUsername)
+		}
+		if config.Dash.SeedUser.Password != dash.DefaultSeedPassword {
+			t.Errorf("SeedUser.Password = %q, want %q", config.Dash.SeedUser.Password, dash.DefaultSeedPassword)
+		}
+	})
+	t.Run("explicit seed user is loaded", func(t *testing.T) {
+		config, err := NewConfig(writeConfig(t, `{
+			"dash":{
+				"auth_jwt":"auth-secret",
+				"refresh_jwt":"refresh-secret",
+				"seed_user":{"username":"from-file","password":"FromFile#1"}
+			}
+		}`))
+		if err != nil {
+			t.Fatalf("NewConfig() error = %v", err)
+		}
+		if config.Dash.SeedUser.Username != "from-file" {
+			t.Errorf("SeedUser.Username = %q, want from-file", config.Dash.SeedUser.Username)
+		}
+		if config.Dash.SeedUser.Password != "FromFile#1" {
+			t.Errorf("SeedUser.Password = %q, want FromFile#1", config.Dash.SeedUser.Password)
+		}
+	})
 }
 
 func writeConfig(t *testing.T, content string) string {

@@ -196,6 +196,13 @@ make init
 make run
 ```
 
+On a database without any admin, the first start seeds one dashboard admin from
+`dash.seed_user` in `config.json`. When that key is omitted the seed falls back
+to `admin` / `aA1234567` (`DefaultSeedUsername` / `DefaultSeedPassword` in
+`internal/server/dash/config.go`). Set your own credentials there before the
+first start, or change the password right after it, before exposing the
+dashboard.
+
 During normal development:
 
 ```shell

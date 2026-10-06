@@ -45,7 +45,7 @@ func NewApplication(conf *config.Config) (*boot.Application, error) {
 	if err != nil {
 		return nil, err
 	}
-	dashInitialize := dashinit.NewDashInitialize(daoDao)
+	dashInitialize := dashinit.NewDashInitialize(daoDao, dashConfig)
 	connectCleaner := conncleaner.NewConnectCleaner(daoDao, v)
 	application := newApplication(web, botBot, dashInitialize, connectCleaner)
 	return application, nil

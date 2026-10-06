@@ -1,6 +1,7 @@
 package config
 
 import (
+	"cmp"
 	"fmt"
 
 	"github.com/go-sphere/confstore"
@@ -51,6 +52,10 @@ func NewEmptyConfig() *Config {
 				Cors:    nil,
 				Static:  "",
 			},
+			SeedUser: dash.SeedUserConfig{
+				Username: dash.DefaultSeedUsername,
+				Password: dash.DefaultSeedPassword,
+			},
 		},
 		Local: spherefile.LocalFileServiceConfig{
 			RootDir:    "./var/file",
@@ -70,6 +75,8 @@ func NewConfig(path string) (*Config, error) {
 	if config.Log.Level == "" {
 		config.Log.Level = "info"
 	}
+	config.Dash.SeedUser.Username = cmp.Or(config.Dash.SeedUser.Username, dash.DefaultSeedUsername)
+	config.Dash.SeedUser.Password = cmp.Or(config.Dash.SeedUser.Password, dash.DefaultSeedPassword)
 	if config.Dash.AuthJWT == "" || config.Dash.RefreshJWT == "" {
 		return nil, fmt.Errorf("dash auth_jwt and refresh_jwt must be non-empty")
 	}
