@@ -166,7 +166,8 @@ Change versions only there; the Makefile and the codegen scripts both read it.
 Generated `api/**` is not committed, so `codegen.sha256` records the SHA-256
 of every generated `api/**` file as the tracked regression baseline:
 
-- `make codegen-check` compares the current `api/**` with the baseline.
+- `make codegen-check` compares the current `api/**` with the baseline. The CI
+  workflow runs it right after `make gen/all`.
 - `make codegen-verify` regenerates `api/**` with the pinned plugins in a
   temporary tool directory and checks that the generated packages build, that
   generation is idempotent, and that the output matches the baseline. The

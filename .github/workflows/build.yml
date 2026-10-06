@@ -25,6 +25,10 @@ jobs:
         run: make install
       - name: Generate
         run: make gen/all
+      # api/** is gitignored; codegen.sha256 is its tracked digest baseline.
+      # A mismatch means generator output changed without a baseline update.
+      - name: Check generated code baseline
+        run: make codegen-check
       # Generation must not leave go.mod/go.sum behind: a diff means the
       # template's declarations no longer cover what its generators emit.
       - name: Check generated dependencies
