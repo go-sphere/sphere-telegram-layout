@@ -144,6 +144,10 @@ install_service() {
         echo 'Creating remote directory ${REMOTE_DIR}...';
         sudo mkdir -p '${REMOTE_DIR}';
 
+        echo 'Creating service user ${PROJECT_NAME}...';
+        id -u '${PROJECT_NAME}' >/dev/null 2>&1 || sudo useradd --system --home '${REMOTE_DIR}' --shell /usr/sbin/nologin '${PROJECT_NAME}';
+        sudo chown -R '${PROJECT_NAME}:${PROJECT_NAME}' '${REMOTE_DIR}';
+
         echo 'Reloading systemd daemon...';
         sudo systemctl daemon-reload;
 

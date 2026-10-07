@@ -3,6 +3,12 @@ services:
     build:
       context: .
       dockerfile: cmd/app/Dockerfile
+    ports:
+      - "8800:8800"
+    # The ./var paths in config.json (database, uploads, logs) resolve against
+    # working_dir; mount it so data survives container rebuilds.
+    working_dir: /app
     volumes:
       - ./config.json:/config/config.json
+      - ./var:/app/var
     restart: always

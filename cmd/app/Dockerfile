@@ -10,7 +10,9 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN make init && make build/${TARGETOS}/${TARGETARCH}
+# Not `make init`: that also runs `buf dep update`, which would build the
+# image against unpinned dependencies instead of the committed buf.lock.
+RUN make install && make gen/all && make build/${TARGETOS}/${TARGETARCH}
 
 FROM gcr.io/distroless/static
 ARG TARGETOS=linux

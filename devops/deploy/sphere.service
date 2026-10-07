@@ -6,8 +6,10 @@ After=network.target
 Type=simple
 ExecStart=/opt/sphere/app --config /opt/sphere/config.json
 WorkingDirectory=/opt/sphere
-#User=nobody  # change to a specific user if needed
-#Group=nobody # change to a specific group if needed
+# Run as an unprivileged user that owns WorkingDirectory, e.g.:
+#   sudo useradd --system --home /opt/sphere sphere && sudo chown -R sphere: /opt/sphere
+User=sphere
+Group=sphere
 Restart=always
 RestartSec=5
 Environment="GIN_MODE=release"
