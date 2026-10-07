@@ -12,8 +12,15 @@ import (
 
 var _ dashv1.AdminSessionServiceHTTPServer = (*Service)(nil)
 
+// DeleteAdminSession revokes one of the caller's own sessions; like
+// ListAdminSessions it never touches another admin's sessions, and an ID that
+// is not the caller's is reported as not found.
 func (s *Service) DeleteAdminSession(ctx context.Context, request *dashv1.DeleteAdminSessionRequest) (*dashv1.DeleteAdminSessionResponse, error) {
-	err := s.db.AdminSession.UpdateOneID(request.Id).SetIsRevoked(true).Exec(ctx)
+	uid, err := s.GetCurrentID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	err = s.db.AdminSession.UpdateOneID(request.Id).Where(adminsession.UIDEQ(uid)).SetIsRevoked(true).Exec(ctx)
 	if err != nil {
 		return nil, err
 	}

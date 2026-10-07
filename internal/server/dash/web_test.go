@@ -105,6 +105,65 @@ func TestWebAuthAndAdminEndpoints(t *testing.T) {
 		}
 	})
 
+	t.Run("admin without roles cannot reach management services", func(t *testing.T) {
+		baseURL, _, cleanup := setupTestWeb(t)
+		defer cleanup()
+
+		root := loginTokens(t, baseURL, testAdminUsername, testAdminPassword)
+		status, body := doJSONRequest(t, http.MethodPost, baseURL+"/api/admin/create", map[string]any{
+			"admin": map[string]any{"username": "NoRoles", "password": "NoRoles#123"},
+		}, map[string]string{"Authorization": "Bearer " + root.AccessToken})
+		if status != http.StatusOK {
+			t.Fatalf("create admin status = %d, body=%s", status, body)
+		}
+
+		// The username is normalized on create, so login matches it exactly.
+		limited := loginTokens(t, baseURL, "noroles", "NoRoles#123")
+		bearer := map[string]string{"Authorization": "Bearer " + limited.AccessToken}
+		for _, target := range []string{"/api/key-value-store/list", "/api/admin/list"} {
+			if status, body := doJSONRequest(t, http.MethodGet, baseURL+target, nil, bearer); status != http.StatusForbidden {
+				t.Errorf("GET %s status = %d, want %d, body=%s", target, status, http.StatusForbidden, body)
+			}
+		}
+		if status, body := doJSONRequest(t, http.MethodPost, baseURL+"/api/cache/reset", map[string]any{}, bearer); status != http.StatusForbidden {
+			t.Errorf("POST /api/cache/reset status = %d, want %d, body=%s", status, http.StatusForbidden, body)
+		}
+	})
+
+	t.Run("password change revokes refresh sessions", func(t *testing.T) {
+		baseURL, _, cleanup := setupTestWeb(t)
+		defer cleanup()
+
+		tokens := loginTokens(t, baseURL, testAdminUsername, testAdminPassword)
+		bearer := map[string]string{"Authorization": "Bearer " + tokens.AccessToken}
+		status, body := doJSONRequest(t, http.MethodGet, baseURL+"/api/admin/list", nil, bearer)
+		if status != http.StatusOK {
+			t.Fatalf("list admins status = %d, body=%s", status, body)
+		}
+		var list struct {
+			Data struct {
+				Admins []struct {
+					ID int64 `json:"id"`
+				} `json:"admins"`
+			} `json:"data"`
+		}
+		if err := json.Unmarshal([]byte(body), &list); err != nil || len(list.Data.Admins) == 0 {
+			t.Fatalf("parse admin list: %v, body=%s", err, body)
+		}
+		status, body = doJSONRequest(t, http.MethodPost, baseURL+"/api/admin/update", map[string]any{
+			"admin": map[string]any{"id": list.Data.Admins[0].ID, "username": testAdminUsername, "password": "Changed#123"},
+		}, bearer)
+		if status != http.StatusOK {
+			t.Fatalf("update admin status = %d, body=%s", status, body)
+		}
+		status, body = doJSONRequest(t, http.MethodPost, baseURL+"/api/auth/refresh", map[string]string{
+			"refresh_token": tokens.RefreshToken,
+		}, nil)
+		if status == http.StatusOK {
+			t.Fatalf("refresh after password change succeeded, body=%s", body)
+		}
+	})
+
 	t.Run("legacy pure-admin login path is gone", func(t *testing.T) {
 		baseURL, _, cleanup := setupTestWeb(t)
 		defer cleanup()
@@ -347,6 +406,18 @@ func insertDefaultAdmin(t *testing.T, db *ent.Client) {
 	if err != nil {
 		t.Fatalf("insert admin failed: %v", err)
 	}
+}
+
+func loginTokens(t *testing.T, baseURL, username, password string) authTokenData {
+	t.Helper()
+	status, body := doJSONRequest(t, http.MethodPost, baseURL+"/api/auth/login", map[string]string{
+		"username": username,
+		"password": password,
+	}, nil)
+	if status != http.StatusOK {
+		t.Fatalf("login %q status = %d, body=%s", username, status, body)
+	}
+	return parseAuthTokens(t, body)
 }
 
 func doJSONRequest(t *testing.T, method, target string, payload any, headers map[string]string) (int, string) {

@@ -8,6 +8,7 @@ import (
 	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/dao"
 	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/ent"
 	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/ent/admin"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/ent/adminsession"
 	"github.com/go-sphere/sphere/server/auth/jwtauth"
 	"github.com/go-sphere/sphere/utils/secure"
 	"github.com/google/uuid"
@@ -92,7 +93,7 @@ func (s *Service) createAdminToken(ctx context.Context, client *ent.Client, admi
 
 func (s *Service) LoginWithPassword(ctx context.Context, request *dashv1.LoginWithPasswordRequest) (*dashv1.LoginWithPasswordResponse, error) {
 	token, err := dao.WithTx[AdminToken](ctx, s.db.Client, func(ctx context.Context, client *ent.Client) (*AdminToken, error) {
-		administrator, err := client.Admin.Query().Where(admin.UsernameEqualFold(request.Username)).Only(ctx)
+		administrator, err := client.Admin.Query().Where(admin.UsernameEQ(NormalizeUsername(request.Username))).Only(ctx)
 		if err != nil {
 			return nil, dashv1.AuthError_AUTH_ERROR_INVALID_CREDENTIALS // 隐藏错误信息
 		}
@@ -136,9 +137,17 @@ func (s *Service) RefreshToken(ctx context.Context, request *dashv1.RefreshToken
 		if err != nil {
 			return nil, err
 		}
-		err = client.AdminSession.UpdateOneID(session.ID).SetIsRevoked(true).Exec(ctx)
+		// Revoke conditionally so that only one of several concurrent refreshes
+		// with the same token wins; the others see zero affected rows.
+		revoked, err := client.AdminSession.Update().
+			Where(adminsession.ID(session.ID), adminsession.IsRevoked(false)).
+			SetIsRevoked(true).
+			Save(ctx)
 		if err != nil {
 			return nil, err
+		}
+		if revoked == 0 {
+			return nil, dashv1.AdminSessionError_ADMIN_SESSION_ERROR_REVOKED
 		}
 		return s.createAdminToken(ctx, client, administrator)
 	})

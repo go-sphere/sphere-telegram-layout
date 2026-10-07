@@ -80,3 +80,30 @@ func assertInitState(t *testing.T, db *ent.Client, adminCount int, initialized b
 		t.Fatalf("did_init exists = %v, want %v", gotInitialized, initialized)
 	}
 }
+
+func TestInitializeGeneratesPasswordWhenSeedPasswordIsEmpty(t *testing.T) {
+	ctx := t.Context()
+	db, err := client.NewDataBaseClient(client.Config{
+		Type: "sqlite3",
+		Path: filepath.Join(t.TempDir(), "dash-init.db"),
+	})
+	if err != nil {
+		t.Fatalf("open database: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	seed := dash.SeedUserConfig{Username: " Seed-Admin "}
+	if err := NewDashInitialize(dao.NewDao(db), dash.Config{SeedUser: seed}).Start(ctx); err != nil {
+		t.Fatalf("initialize empty table: %v", err)
+	}
+	admin, err := db.Admin.Query().Only(ctx)
+	if err != nil {
+		t.Fatalf("load seeded admin: %v", err)
+	}
+	if admin.Username != "seed-admin" {
+		t.Fatalf("seeded username = %q, want seed-admin", admin.Username)
+	}
+	if secure.IsPasswordMatch("", admin.Password) {
+		t.Fatal("seeded admin must not accept an empty password")
+	}
+}

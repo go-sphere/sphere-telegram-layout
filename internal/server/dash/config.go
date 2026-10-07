@@ -1,12 +1,8 @@
 package dash
 
-// DefaultSeedUsername and DefaultSeedPassword fill dash.seed_user when the
-// config file leaves it empty. They only matter on a database without any
-// admin, and the password must be changed before the service is exposed.
-const (
-	DefaultSeedUsername = "admin"
-	DefaultSeedPassword = "aA1234567"
-)
+// DefaultSeedUsername is the dashboard admin username seeded when
+// dash.seed_user.username is empty. There is deliberately no default password.
+const DefaultSeedUsername = "admin"
 
 type HTTPConfig struct {
 	Address string   `json:"address" yaml:"address"`
@@ -15,7 +11,8 @@ type HTTPConfig struct {
 }
 
 // SeedUserConfig is the dashboard admin created on first start, when the
-// database has no admin yet.
+// database has no admin yet. An empty Password makes the seed task generate a
+// random one and log it once.
 type SeedUserConfig struct {
 	Username string `json:"username" yaml:"username"`
 	Password string `json:"password" yaml:"password"`

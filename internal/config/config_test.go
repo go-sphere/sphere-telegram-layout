@@ -67,7 +67,7 @@ func TestNewConfigAppliesLogLevelDefault(t *testing.T) {
 }
 
 func TestNewConfigLoadsSeedUserSettings(t *testing.T) {
-	t.Run("omitted seed user uses defaults", func(t *testing.T) {
+	t.Run("omitted seed user uses default username and no password", func(t *testing.T) {
 		config, err := NewConfig(writeConfig(t, `{
 			"dash":{"auth_jwt":"auth-secret","refresh_jwt":"refresh-secret"}
 		}`))
@@ -77,8 +77,8 @@ func TestNewConfigLoadsSeedUserSettings(t *testing.T) {
 		if config.Dash.SeedUser.Username != dash.DefaultSeedUsername {
 			t.Errorf("SeedUser.Username = %q, want %q", config.Dash.SeedUser.Username, dash.DefaultSeedUsername)
 		}
-		if config.Dash.SeedUser.Password != dash.DefaultSeedPassword {
-			t.Errorf("SeedUser.Password = %q, want %q", config.Dash.SeedUser.Password, dash.DefaultSeedPassword)
+		if config.Dash.SeedUser.Password != "" {
+			t.Errorf("SeedUser.Password = %q, want empty", config.Dash.SeedUser.Password)
 		}
 	})
 	t.Run("explicit seed user is loaded", func(t *testing.T) {

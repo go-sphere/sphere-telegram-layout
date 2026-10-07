@@ -71,7 +71,7 @@ func (w *Web) Start(ctx context.Context) error {
 	initDefaultRolesACL(w.acl)
 
 	sharedv1.RegisterStorageServiceHTTPServer(needAuthRoute, w.sharedSvc)
-	sharedv1.RegisterTestServiceHTTPServer(api, w.sharedSvc)
+	sharedv1.RegisterTestServiceHTTPServer(needAuthRoute, w.sharedSvc)
 
 	// 文件上传下载路由, 上传使用一次性 `key` 鉴权, 下载无需鉴权
 	// 挂在 /files 前缀下, 避免 catch-all 与 /api 静态路由冲突
@@ -95,13 +95,13 @@ func (w *Web) Start(ctx context.Context) error {
 	)
 	dashv1.RegisterAuthServiceHTTPServer(authRoute, w.service)
 
+	// Every management service requires the admin permission; a signed
+	// token alone (e.g. an admin created with no roles) is not enough.
 	adminRoute := needAuthRoute.Group("/", w.withPermission(dash.PermissionAdmin))
 	dashv1.RegisterAdminServiceHTTPServer(adminRoute, w.service)
 	dashv1.RegisterAdminSessionServiceHTTPServer(adminRoute, w.service)
-
-	systemRoute := needAuthRoute.Group("/")
-	dashv1.RegisterSystemServiceHTTPServer(systemRoute, w.service)
-	dashv1.RegisterKeyValueStoreServiceHTTPServer(systemRoute, w.service)
+	dashv1.RegisterSystemServiceHTTPServer(adminRoute, w.service)
+	dashv1.RegisterKeyValueStoreServiceHTTPServer(adminRoute, w.service)
 
 	return w.engine.Start()
 }
