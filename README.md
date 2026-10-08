@@ -197,16 +197,37 @@ disables the limit.
 - `read_timeout_seconds` (default 30) bounds reading a whole request, body
   included; `idle_timeout_seconds` (default 120) bounds an idle keep-alive
   connection.
-- `max_body_bytes` (default 4 MiB) caps a request body; reading past it
-  fails, and a JSON request that does is answered with 413. The dash server
-  also accepts file uploads, so it defaults to 64 MiB and a 5-minute read
-  timeout instead.
+- `max_body_bytes` (default 4 MiB) caps a request body: a request declaring a
+  larger Content-Length is answered 413 before its route runs, and reading past
+  the cap is answered 413 too. The dash server also accepts file uploads, so it
+  defaults to 64 MiB and a 5-minute read timeout instead.
 - `trusted_proxies` lists the reverse proxies (IPs or CIDRs) whose
   `X-Forwarded-For` header is honoured. Set it when the service runs behind a
   proxy: otherwise every client, and every per-IP rate limit, shares the
   proxy's address. An invalid entry fails configuration loading.
 
 ## Upgrade Notes
+
+Changes in the sphere v0.0.7 sync:
+
+- Pinned to `sphere` v0.0.7, `httpx` / `httpx/stdx` v0.0.6 and `errors` v0.0.3,
+  and generated `api/**` comes from protoc-gen-sphere v0.0.6, -binding v0.0.6
+  and -errors v0.0.4 (`codegen.versions`; `codegen.sha256` was refreshed).
+  protoc-gen-sphere now fails generation for the constructs it used to drop: a
+  real `oneof` in a JSON body, a `Timestamp`/`Duration`/wrapper as a
+  query/uri/header parameter, a `FORM` field on a body-less method, and nested
+  or missing `body`/`response_body` paths.
+- The process-wide error parser in `internal/pkg/render/errors.go` falls back to
+  `httpz.ParseError` instead of `httpx.ParseError`, so the storage sentinels
+  (`ErrNotFound`, `ErrDestExists`, `ErrFileNameInvalid`) render 404/400 instead
+  of 500. A project with its own parser must change the fallback the same way.
+- `cmd/app/main.go` calls `idgenerator.InitFromEnv()` after
+  `boot.InitTimezone`, so a malformed `WORKER_ID` fails at startup again
+  instead of panicking inside the first ent insert. Merge `cmd/app/main.go`.
+- The request body cap is the engine's `stdx.WithMaxBodySize` now, not a
+  wrapper around the server's handler: a request declaring a larger
+  Content-Length is refused with 413 before its route runs, in-process requests
+  are capped too, and the 413 is rendered by the error parser.
 
 Template changes after the stdx migration:
 
