@@ -5,3 +5,5 @@
 /var
 /devops
 /config.json
+/go.work
+/go.work.sum
