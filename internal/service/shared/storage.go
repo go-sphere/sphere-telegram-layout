@@ -2,10 +2,10 @@ package shared
 
 import (
 	"context"
-	"fmt"
 	"path"
 	"strconv"
 
+	"github.com/go-sphere/httpx"
 	sharedv1 "github.com/go-sphere/sphere-telegram-layout/api/shared/v1"
 	"github.com/go-sphere/sphere/storage"
 )
@@ -14,7 +14,7 @@ var _ sharedv1.StorageServiceHTTPServer = (*Service)(nil)
 
 func (s *Service) UploadToken(ctx context.Context, req *sharedv1.UploadTokenRequest) (*sharedv1.UploadTokenResponse, error) {
 	if req.Filename == "" {
-		return nil, fmt.Errorf("filename is required")
+		return nil, httpx.NewBadRequestError("filename is required")
 	}
 	id, err := s.GetCurrentID(ctx)
 	if err != nil {
