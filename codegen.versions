@@ -9,9 +9,9 @@
 # together with a refreshed baseline (`make codegen-baseline`).
 
 # go-sphere protoc plugins (api/**)
-PROTOC_GEN_SPHERE_VERSION=v0.0.5
-PROTOC_GEN_SPHERE_BINDING_VERSION=v0.0.5
-PROTOC_GEN_SPHERE_ERRORS_VERSION=v0.0.3
+PROTOC_GEN_SPHERE_VERSION=v0.0.6
+PROTOC_GEN_SPHERE_BINDING_VERSION=v0.0.6
+PROTOC_GEN_SPHERE_ERRORS_VERSION=v0.0.4
 PROTOC_GEN_ROUTE_VERSION=v0.0.2
 
 # Protobuf toolchain (api/**)
