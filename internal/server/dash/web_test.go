@@ -16,8 +16,10 @@ import (
 	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/dao"
 	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/client"
 	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/ent"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/httpsrv"
 	servicedash "github.com/go-sphere/sphere-telegram-layout/internal/service/dash"
 	"github.com/go-sphere/sphere/cache/memory"
+	"github.com/go-sphere/sphere/server/auth/jwtauth"
 	"github.com/go-sphere/sphere/server/httpz"
 	spherefile "github.com/go-sphere/sphere/server/service/file"
 	"github.com/go-sphere/sphere/storage"
@@ -188,6 +190,33 @@ func TestWebAuthAndAdminEndpoints(t *testing.T) {
 			t.Fatalf("status = %d, want %d, body=%s", status, http.StatusUnauthorized, body)
 		}
 	})
+
+	t.Run("unusable refresh token is rejected with 401", func(t *testing.T) {
+		baseURL, _, cleanup := setupTestWeb(t)
+		defer cleanup()
+
+		refresher := jwtauth.NewJwtAuth[jwtauth.RBACClaims[int64]]("test-refresh-jwt-secret")
+		sign := func(sessionID int64, expires time.Time) string {
+			t.Helper()
+			token, err := refresher.GenerateToken(t.Context(), jwtauth.NewRBACClaims(sessionID, "session-key", nil, expires))
+			if err != nil {
+				t.Fatalf("sign refresh token: %v", err)
+			}
+			return token
+		}
+		for name, token := range map[string]string{
+			"malformed":       "not-a-jwt",
+			"expired":         sign(1, time.Now().Add(-time.Hour)),
+			"unknown session": sign(999999, time.Now().Add(time.Hour)),
+		} {
+			status, body := doJSONRequest(t, http.MethodPost, baseURL+"/api/auth/refresh", map[string]string{
+				"refresh_token": token,
+			}, nil)
+			if status != http.StatusUnauthorized {
+				t.Errorf("%s refresh token: status = %d, want %d, body=%s", name, status, http.StatusUnauthorized, body)
+			}
+		}
+	})
 }
 
 // TestWebLogin_PersistsSessionMetadata guards the hand-off between
@@ -290,6 +319,20 @@ func TestWebServer_TokenUploadDownloadFlow(t *testing.T) {
 	}
 }
 
+func TestWebRejectsOversizedBodyWith413(t *testing.T) {
+	const limit = 1 << 10
+	baseURL, _, _, cleanup := setupTestWebWithOptions(t, httpsrv.Options{MaxBodyBytes: limit})
+	defer cleanup()
+
+	status, body := doJSONRequest(t, http.MethodPost, baseURL+"/api/auth/login", map[string]string{
+		"username": strings.Repeat("a", limit),
+		"password": testAdminPassword,
+	}, nil)
+	if status != http.StatusRequestEntityTooLarge {
+		t.Fatalf("status = %d, want %d, body=%s", status, http.StatusRequestEntityTooLarge, body)
+	}
+}
+
 func setupTestWeb(t *testing.T) (string, *fileserver.FileServer, func()) {
 	t.Helper()
 
@@ -298,6 +341,12 @@ func setupTestWeb(t *testing.T) (string, *fileserver.FileServer, func()) {
 }
 
 func setupTestWebWithDB(t *testing.T) (string, *fileserver.FileServer, *ent.Client, func()) {
+	t.Helper()
+
+	return setupTestWebWithOptions(t, httpsrv.Options{})
+}
+
+func setupTestWebWithOptions(t *testing.T, opts httpsrv.Options) (string, *fileserver.FileServer, *ent.Client, func()) {
 	t.Helper()
 
 	addr := randomLocalAddress(t)
@@ -319,6 +368,7 @@ func setupTestWebWithDB(t *testing.T) (string, *fileserver.FileServer, *ent.Clie
 		RefreshJWT: "test-refresh-jwt-secret",
 		HTTP: HTTPConfig{
 			Address: addr,
+			Options: opts,
 		},
 	}, fileServer, service)
 

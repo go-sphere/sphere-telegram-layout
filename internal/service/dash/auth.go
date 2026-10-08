@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/go-sphere/httpx"
 	dashv1 "github.com/go-sphere/sphere-telegram-layout/api/dash/v1"
 	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/dao"
 	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/ent"
@@ -35,6 +36,11 @@ const (
 	AuthContextKeyIP AuthContextKey = "auth_ip"
 	AuthContextKeyUA AuthContextKey = "auth_ua"
 )
+
+// errInvalidRefreshToken answers a refresh token that is malformed, expired,
+// signed with another key, or names a session or admin that no longer exists:
+// the client must log in again, which 401 tells it.
+var errInvalidRefreshToken = httpx.NewUnauthorizedError("invalid refresh token")
 
 type AdminToken struct {
 	Admin        *ent.Admin
@@ -116,9 +122,12 @@ func (s *Service) RefreshToken(ctx context.Context, request *dashv1.RefreshToken
 	token, err := dao.WithTx[AdminToken](ctx, s.db.Client, func(ctx context.Context, client *ent.Client) (*AdminToken, error) {
 		claims, err := s.authRefresher.ParseToken(ctx, request.RefreshToken)
 		if err != nil {
-			return nil, err
+			return nil, errInvalidRefreshToken
 		}
 		session, err := client.AdminSession.Get(ctx, claims.UID)
+		if ent.IsNotFound(err) {
+			return nil, errInvalidRefreshToken
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -134,6 +143,9 @@ func (s *Service) RefreshToken(ctx context.Context, request *dashv1.RefreshToken
 			return nil, dashv1.AdminSessionError_ADMIN_SESSION_ERROR_KEY_NOT_MATCH
 		}
 		administrator, err := client.Admin.Get(ctx, session.UID)
+		if ent.IsNotFound(err) {
+			return nil, errInvalidRefreshToken
+		}
 		if err != nil {
 			return nil, err
 		}
