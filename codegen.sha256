@@ -1,3 +1,4 @@
+# module github.com/go-sphere/sphere-telegram-layout
 262c16456393394fd940ab82938e10ab5e6604ac36df2df2fa5768c551e8210d  api/bot/v1/menu.bot.pb.go
 c8251e4eb2dfab3d174c830d9c78207944a839b66fd6bfec900fe9e2637b1c75  api/bot/v1/menu.pb.go
 72118124ed026f96405eda2d816d1e8008d13a8d8b4105dc1d4ea1e82e3c8f36  api/dash/v1/admin.errors.pb.go

@@ -10,8 +10,8 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-# Not `make init`: that also runs `buf dep update`, which would build the
-# image against unpinned dependencies instead of the committed buf.lock.
+# Not `make init`: that also writes config.json and re-records codegen.sha256,
+# neither of which belongs in an image build.
 RUN make install && make gen/all && make build/${TARGETOS}/${TARGETARCH}
 
 FROM gcr.io/distroless/static

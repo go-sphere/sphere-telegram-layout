@@ -18,9 +18,8 @@ jobs:
         with:
           go-version-file: go.mod
           cache-dependency-path: "**/go.sum"
-      # `make init` would also refresh buf dependencies (buf dep update) and
-      # the example config; CI wants the committed buf.lock instead, so it
-      # installs the tools and generates in explicit steps.
+      # Not `make init`: it re-records codegen.sha256, which would hide the
+      # very drift the baseline check below looks for.
       - name: Install tools
         run: make install
       - name: Generate
