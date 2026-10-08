@@ -1,7 +1,6 @@
 package httpsrv
 
 import (
-	"bytes"
 	"errors"
 	"io"
 	"net/http"
@@ -41,14 +40,16 @@ func TestNewEngineServerTimeouts(t *testing.T) {
 	}
 }
 
-// postBody serves engine through srv on a real listener, POSTs size bytes of
-// JSON to /echo, and reports the status and whether the handler's read failed
-// with *http.MaxBytesError.
-func postBody(t *testing.T, opts Options, size int) (status int, capped bool) {
+// postBody serves engine through srv on a real listener and POSTs a JSON
+// object of size bytes to /echo, with a declared Content-Length when declared
+// is true and chunked encoding otherwise. It reports the status, whether the
+// handler ran, and whether the handler's read failed with *http.MaxBytesError.
+func postBody(t *testing.T, opts Options, size int, declared bool) (status int, reached, capped bool) {
 	t.Helper()
 	engine, srv := newEngine("", opts)
 	var readErr error
 	engine.Group("").POST("/echo", func(ctx httpx.Context) error {
+		reached = true
 		var v map[string]string
 		readErr = ctx.BindJSON(&v)
 		if readErr != nil {
@@ -61,28 +62,47 @@ func postBody(t *testing.T, opts Options, size int) (status int, capped bool) {
 
 	// A JSON object whose total length is exactly size bytes.
 	body := `{"k":"` + strings.Repeat("a", size-len(`{"k":""}`)) + `"}`
-	resp, err := http.Post(ts.URL+"/echo", "application/json", bytes.NewBufferString(body))
+	req, err := http.NewRequest(http.MethodPost, ts.URL+"/echo", strings.NewReader(body))
+	if err != nil {
+		t.Fatalf("new request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if !declared {
+		// A length of 0 with a non-nil body makes the client use chunked
+		// encoding, so the server cannot refuse the request up front.
+		req.ContentLength = 0
+	}
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatalf("POST /echo: %v", err)
 	}
 	_, _ = io.Copy(io.Discard, resp.Body)
 	_ = resp.Body.Close()
 	_, capped = errors.AsType[*http.MaxBytesError](readErr)
-	return resp.StatusCode, capped
+	return resp.StatusCode, reached, capped
 }
 
 func TestNewEngineCapsRequestBody(t *testing.T) {
-	if status, capped := postBody(t, Options{MaxBodyBytes: 64}, 64); status != http.StatusNoContent || capped {
-		t.Fatalf("body at the cap: status = %d, capped = %v; want 204, false", status, capped)
+	// A body at the cap is served as usual.
+	if status, reached, capped := postBody(t, Options{MaxBodyBytes: 64}, 64, true); status != http.StatusNoContent || !reached || capped {
+		t.Fatalf("body at the cap: status = %d, reached = %v, capped = %v; want 204, true, false", status, reached, capped)
 	}
-	if status, capped := postBody(t, Options{MaxBodyBytes: 64}, 65); status == http.StatusNoContent || !capped {
-		t.Fatalf("body over the cap: status = %d, capped = %v; want an error from *http.MaxBytesError", status, capped)
+	// A declared length over the cap is refused before the route runs.
+	if status, reached, capped := postBody(t, Options{MaxBodyBytes: 64}, 65, true); status != http.StatusRequestEntityTooLarge || reached || capped {
+		t.Fatalf("declared body over the cap: status = %d, reached = %v, capped = %v; want 413, false, false", status, reached, capped)
 	}
-	if _, capped := postBody(t, Options{}, int(DefaultMaxBodyBytes)+1); !capped {
-		t.Fatal("body over DefaultMaxBodyBytes was read in full; want the default cap")
+	// A chunked body cannot be refused up front: the read that passes the cap
+	// fails inside the handler, which answers 413 through the error parser.
+	if status, reached, capped := postBody(t, Options{MaxBodyBytes: 64}, 65, false); status != http.StatusRequestEntityTooLarge || !reached || !capped {
+		t.Fatalf("chunked body over the cap: status = %d, reached = %v, capped = %v; want 413, true, true", status, reached, capped)
 	}
-	if status, capped := postBody(t, Options{MaxBodyBytes: -1}, int(DefaultMaxBodyBytes)+1); status != http.StatusNoContent || capped {
-		t.Fatalf("disabled cap: status = %d, capped = %v; want 204, false", status, capped)
+	// The default cap applies to a server that did not configure one.
+	if status, _, capped := postBody(t, Options{}, int(DefaultMaxBodyBytes)+1, false); status != http.StatusRequestEntityTooLarge || !capped {
+		t.Fatalf("body over DefaultMaxBodyBytes: status = %d, capped = %v; want 413, true", status, capped)
+	}
+	// A negative value disables the cap.
+	if status, reached, capped := postBody(t, Options{MaxBodyBytes: -1}, int(DefaultMaxBodyBytes)+1, true); status != http.StatusNoContent || !reached || capped {
+		t.Fatalf("disabled cap: status = %d, reached = %v, capped = %v; want 204, true, false", status, reached, capped)
 	}
 }
 

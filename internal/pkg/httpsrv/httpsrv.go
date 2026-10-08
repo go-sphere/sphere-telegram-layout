@@ -29,8 +29,7 @@ func UseCORS(engine httpx.Engine, origins []string) error {
 //
 // The engine is the stdx adapter over plain net/http: it owns the *http.Server
 // and implements httpx.TestRequester directly, so no wrapper is needed for
-// in-process tests or for Stop. In-process requests (Engine.Do) skip the body
-// cap, which wraps the server's Handler. Engine.Stop drains with Shutdown and
+// in-process tests or for Stop. Engine.Stop drains with Shutdown and
 // force-closes when the caller's context expires (httpx.Close, the same
 // sequence httpz.StopServer performs).
 func NewServer(name, addr string, opts Options) httpx.Engine {

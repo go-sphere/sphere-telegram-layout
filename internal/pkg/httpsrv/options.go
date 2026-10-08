@@ -40,9 +40,10 @@ type Options struct {
 	// IdleTimeoutSeconds bounds how long a keep-alive connection waits for its
 	// next request (default DefaultIdleTimeout).
 	IdleTimeoutSeconds int `json:"idle_timeout_seconds" yaml:"idle_timeout_seconds"`
-	// MaxBodyBytes caps every request body (default DefaultMaxBodyBytes).
-	// Reading past it fails with *http.MaxBytesError and the connection is
-	// closed after the response.
+	// MaxBodyBytes caps every request body (default DefaultMaxBodyBytes). A
+	// request declaring a larger Content-Length is refused with 413 before its
+	// route runs; a body of unknown length fails the read that passes the limit
+	// with *http.MaxBytesError, which the binders report as 413.
 	MaxBodyBytes int64 `json:"max_body_bytes" yaml:"max_body_bytes"`
 	// TrustedProxies lists the reverse proxies, as IPs or CIDRs, whose
 	// X-Forwarded-For header ClientIP honours. Empty ignores forwarding headers
@@ -107,8 +108,9 @@ func seconds(n int, def time.Duration) time.Duration {
 }
 
 // newEngine builds the stdx engine and the *http.Server it serves on, with
-// the limits in opts applied. The body cap wraps the server's Handler, so it
-// covers every connection but not Engine.Do, which calls the engine directly.
+// the limits in opts applied. The body cap is the engine's per-route limit, so
+// it refuses an oversized request before the route's middleware runs and also
+// covers in-process Engine.Do requests.
 func newEngine(addr string, opts Options) (httpx.Engine, *http.Server) {
 	httpServer := &http.Server{
 		Addr:              addr,
@@ -119,13 +121,10 @@ func newEngine(addr string, opts Options) (httpx.Engine, *http.Server) {
 	engineOpts := []stdx.Option{
 		stdx.WithServer(httpServer),
 		stdx.WithErrorHandler(httpz.AbortWithJsonError),
+		stdx.WithMaxBodySize(opts.maxBodyBytes()),
 	}
 	if len(opts.TrustedProxies) > 0 {
 		engineOpts = append(engineOpts, stdx.WithTrustedProxies(opts.TrustedProxies...))
 	}
-	engine := stdx.New(engineOpts...)
-	if limit := opts.maxBodyBytes(); limit > 0 {
-		httpServer.Handler = http.MaxBytesHandler(httpServer.Handler, limit)
-	}
-	return engine, httpServer
+	return stdx.New(engineOpts...), httpServer
 }
