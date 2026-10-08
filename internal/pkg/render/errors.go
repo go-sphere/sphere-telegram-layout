@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"buf.build/go/protovalidate"
-	"github.com/go-sphere/httpx"
 	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/conv"
 	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/ent"
 	"github.com/go-sphere/sphere/server/httpz"
@@ -17,7 +16,10 @@ func init() {
 }
 
 // parseError is the process-wide httpz error parser: it maps validation, ent
-// and request-body-cap errors, and leaves the rest to httpx.ParseError.
+// and request-body-cap errors, and leaves the rest to httpz.ParseError. That
+// fallback matters: httpx.ParseError does not classify the storage sentinels
+// (ErrNotFound, ErrDestExists, ErrFileNameInvalid), so a missing storage key
+// would render as 500.
 func parseError(err error) (int32, int32, string) {
 	if ve, ok := errors.AsType[*protovalidate.ValidationError](err); ok {
 		return ValidationError(ve)
@@ -31,7 +33,7 @@ func parseError(err error) (int32, int32, string) {
 	if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
 		return 0, http.StatusRequestEntityTooLarge, http.StatusText(http.StatusRequestEntityTooLarge)
 	}
-	return httpx.ParseError(err)
+	return httpz.ParseError(err)
 }
 
 func ValidationError(err *protovalidate.ValidationError) (int32, int32, string) {
