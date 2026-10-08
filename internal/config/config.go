@@ -18,17 +18,15 @@ import (
 var BuildVersion = "dev"
 
 type Config struct {
-	Environments map[string]string                 `json:"environments" yaml:"environments"`
-	Log          zapx.Config                       `json:"log" yaml:"log"`
-	Database     client.Config                     `json:"database" yaml:"database"`
-	Dash         dash.Config                       `json:"dash" yaml:"dash"`
-	Local        spherefile.LocalFileServiceConfig `json:"local" yaml:"local"`
-	Bot          bot.Config                        `json:"bot" yaml:"bot"`
+	Log      zapx.Config                       `json:"log" yaml:"log"`
+	Database client.Config                     `json:"database" yaml:"database"`
+	Dash     dash.Config                       `json:"dash" yaml:"dash"`
+	Local    spherefile.LocalFileServiceConfig `json:"local" yaml:"local"`
+	Bot      bot.Config                        `json:"bot" yaml:"bot"`
 }
 
 func NewEmptyConfig() *Config {
 	return &Config{
-		Environments: map[string]string{},
 		Log: zapx.Config{
 			File: zapx.FileConfig{
 				FileName:   "./var/log/sphere.log",
@@ -78,6 +76,9 @@ func NewConfig(path string) (*Config, error) {
 	config.Dash.SeedUser.Username = cmp.Or(config.Dash.SeedUser.Username, dash.DefaultSeedUsername)
 	if config.Dash.AuthJWT == "" || config.Dash.RefreshJWT == "" {
 		return nil, fmt.Errorf("dash auth_jwt and refresh_jwt must be non-empty")
+	}
+	if err := config.Dash.HTTP.Validate(); err != nil {
+		return nil, fmt.Errorf("dash http: %w", err)
 	}
 	return config, nil
 }

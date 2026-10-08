@@ -1,5 +1,7 @@
 package dash
 
+import "github.com/go-sphere/sphere-telegram-layout/internal/pkg/httpsrv"
+
 // DefaultSeedUsername is the dashboard admin username seeded when
 // dash.seed_user.username is empty. There is deliberately no default password.
 const DefaultSeedUsername = "admin"
@@ -8,6 +10,8 @@ type HTTPConfig struct {
 	Address string   `json:"address" yaml:"address"`
 	Cors    []string `json:"cors" yaml:"cors"`
 	Static  string   `json:"static" yaml:"static"`
+
+	httpsrv.Options `yaml:",inline"`
 }
 
 // SeedUserConfig is the dashboard admin created on first start, when the
