@@ -18,8 +18,10 @@ func newApplication(
 	// Cleaner is the first wave so it Starts (noop) before HTTP, and Stops
 	// last — after dash/bot have drained — instead of closing the DB
 	// concurrently with in-flight requests.
+	// Initialize runs in its own stage before dash/bot accept traffic.
 	return boot.NewStagedApplication(
 		[]task.Task{cleaner},
-		[]task.Task{dash, botApp, initialize},
+		[]task.Task{initialize},
+		[]task.Task{dash, botApp},
 	)
 }

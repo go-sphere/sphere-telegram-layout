@@ -7,15 +7,20 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
 
+	dashv1 "github.com/go-sphere/sphere-telegram-layout/api/dash/v1"
+	"github.com/go-sphere/sphere-telegram-layout/api/entpb"
 	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/dao"
 	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/client"
 	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/ent"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/ent/adminsession"
 	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/httpsrv"
 	servicedash "github.com/go-sphere/sphere-telegram-layout/internal/service/dash"
 	"github.com/go-sphere/sphere/cache/memory"
@@ -163,6 +168,14 @@ func TestWebAuthAndAdminEndpoints(t *testing.T) {
 		}, nil)
 		if status == http.StatusOK {
 			t.Fatalf("refresh after password change succeeded, body=%s", body)
+		}
+		// Omitting roles during password update must keep existing roles intact.
+		newTokens := loginTokens(t, baseURL, testAdminUsername, "Changed#123")
+		status, body = doJSONRequest(t, http.MethodGet, baseURL+"/api/admin/list", nil, map[string]string{
+			"Authorization": "Bearer " + newTokens.AccessToken,
+		})
+		if status != http.StatusOK {
+			t.Fatalf("admin list after password update status = %d, want 200, body=%s", status, body)
 		}
 	})
 
@@ -540,3 +553,220 @@ func parseAdminCount(t *testing.T, body string) int {
 	}
 	return len(resp.Data.Admins)
 }
+
+func TestWebValidationPaginationRateLimitAndExpiredSession(t *testing.T) {
+	t.Run("create and update admin validation rejects invalid password and whitespace username", func(t *testing.T) {
+		baseURL, _, cleanup := setupTestWeb(t)
+		defer cleanup()
+
+		root := loginTokens(t, baseURL, testAdminUsername, testAdminPassword)
+		bearer := map[string]string{"Authorization": "Bearer " + root.AccessToken}
+
+		for _, tc := range []struct {
+			name string
+			path string
+			body map[string]any
+		}{
+			{
+				name: "create empty password",
+				path: "/api/admin/create",
+				body: map[string]any{"admin": map[string]any{"username": "u1", "password": ""}},
+			},
+			{
+				name: "create >72 byte password",
+				path: "/api/admin/create",
+				body: map[string]any{"admin": map[string]any{"username": "u1", "password": strings.Repeat("a", 73)}},
+			},
+			{
+				name: "create whitespace username",
+				path: "/api/admin/create",
+				body: map[string]any{"admin": map[string]any{"username": "   ", "password": "ValidPassword#1"}},
+			},
+			{
+				name: "update >72 byte password",
+				path: "/api/admin/update",
+				body: map[string]any{"admin": map[string]any{"id": 1, "username": testAdminUsername, "password": strings.Repeat("a", 73)}},
+			},
+			{
+				name: "update whitespace username",
+				path: "/api/admin/update",
+				body: map[string]any{"admin": map[string]any{"id": 1, "username": "   "}},
+			},
+		} {
+			status, body := doJSONRequest(t, http.MethodPost, baseURL+tc.path, tc.body, bearer)
+			if status != http.StatusBadRequest {
+				t.Errorf("%s: status = %d, want 400, body=%s", tc.name, status, body)
+			}
+		}
+
+		for _, path := range []string{"/api/key-value-store/create", "/api/key-value-store/update"} {
+			status, body := doJSONRequest(t, http.MethodPost, baseURL+path, map[string]any{}, bearer)
+			if status != http.StatusBadRequest {
+				t.Errorf("POST %s empty body: status = %d, want 400, body=%s", path, status, body)
+			}
+		}
+	})
+
+	t.Run("out-of-range page and session key scrubbing", func(t *testing.T) {
+		baseURL, _, cleanup := setupTestWeb(t)
+		defer cleanup()
+
+		root := loginTokens(t, baseURL, testAdminUsername, testAdminPassword)
+		bearer := map[string]string{"Authorization": "Bearer " + root.AccessToken}
+
+		for _, path := range []string{
+			fmt.Sprintf("/api/admin/list?page=%d&page_size=9999", math.MaxInt64),
+			fmt.Sprintf("/api/admin-session/list?page=%d&page_size=9999", math.MaxInt64),
+			fmt.Sprintf("/api/key-value-store/list?page=%d&page_size=9999", math.MaxInt64),
+		} {
+			status, body := doJSONRequest(t, http.MethodGet, baseURL+path, nil, bearer)
+			if status != http.StatusOK {
+				t.Errorf("GET %s status = %d, want 200, body=%s", path, status, body)
+			}
+		}
+
+		status, body := doJSONRequest(t, http.MethodGet, baseURL+"/api/admin-session/list?page=0&page_size=10", nil, bearer)
+		if status != http.StatusOK {
+			t.Fatalf("list sessions status = %d, body=%s", status, body)
+		}
+		if !strings.Contains(body, `"admin_sessions":[{`) {
+			t.Fatalf("expected non-empty admin_sessions list, body=%s", body)
+		}
+		if strings.Contains(body, `"session_key"`) {
+			t.Fatalf("session list leaked session_key: %s", body)
+		}
+	})
+
+	t.Run("refresh endpoint is rate limited", func(t *testing.T) {
+		baseURL, _, cleanup := setupTestWeb(t)
+		defer cleanup()
+
+		limited := false
+		for range 10 {
+			status, _ := doJSONRequest(t, http.MethodPost, baseURL+"/api/auth/refresh", map[string]string{
+				"refresh_token": "not-a-jwt",
+			}, nil)
+			if status == http.StatusTooManyRequests {
+				limited = true
+				break
+			}
+		}
+		if !limited {
+			t.Fatal("POST /api/auth/refresh was not rate limited")
+		}
+	})
+
+	t.Run("expired session revocation persists in DB", func(t *testing.T) {
+		baseURL, _, db, cleanup := setupTestWebWithDB(t)
+		defer cleanup()
+
+		tokens := loginTokens(t, baseURL, testAdminUsername, testAdminPassword)
+		sess, err := db.AdminSession.Query().Only(t.Context())
+		if err != nil {
+			t.Fatalf("query session: %v", err)
+		}
+		if _, err := db.ExecContext(
+			t.Context(),
+			"UPDATE "+adminsession.Table+" SET "+adminsession.FieldExpires+" = ? WHERE "+adminsession.FieldID+" = ?",
+			time.Now().Add(-time.Minute).Unix(),
+			sess.ID,
+		); err != nil {
+			t.Fatalf("expire session in DB: %v", err)
+		}
+
+		status, body := doJSONRequest(t, http.MethodPost, baseURL+"/api/auth/refresh", map[string]string{
+			"refresh_token": tokens.RefreshToken,
+		}, nil)
+		if status != http.StatusForbidden {
+			t.Fatalf("expired refresh status = %d, want 403, body=%s", status, body)
+		}
+
+		reloaded, err := db.AdminSession.Get(t.Context(), sess.ID)
+		if err != nil {
+			t.Fatalf("reload session: %v", err)
+		}
+		if !reloaded.IsRevoked {
+			t.Fatal("expired session was not persisted as revoked")
+		}
+	})
+
+	t.Run("update admin normalizes avatar key via storage", func(t *testing.T) {
+		db := newMemoryDB(t)
+		defer func() { _ = db.Close() }()
+		insertDefaultAdmin(t, db)
+		adm, err := db.Admin.Query().Only(t.Context())
+		if err != nil {
+			t.Fatalf("query admin: %v", err)
+		}
+		svc := servicedash.NewService(dao.NewDao(db), memory.NewByteCache(), &prefixStripStorage{prefix: "https://cdn.example/"})
+		resp, err := svc.UpdateAdmin(t.Context(), &dashv1.UpdateAdminRequest{
+			Admin: &entpb.Admin{
+				Id:       adm.ID,
+				Username: " Admin ",
+				Avatar:   "https://cdn.example/avatars/a.png",
+			},
+		})
+		if err != nil {
+			t.Fatalf("UpdateAdmin() error = %v", err)
+		}
+		if resp.Admin.Avatar != "https://cdn.example/avatars/a.png" {
+			t.Fatalf("rendered avatar = %q", resp.Admin.Avatar)
+		}
+		reloaded, err := db.Admin.Get(t.Context(), adm.ID)
+		if err != nil {
+			t.Fatalf("reload admin: %v", err)
+		}
+		if reloaded.Avatar != "avatars/a.png" {
+			t.Fatalf("stored avatar key = %q, want avatars/a.png", reloaded.Avatar)
+		}
+	})
+}
+
+type prefixStripStorage struct {
+	prefix string
+}
+
+func (p *prefixStripStorage) GenerateURL(key string, _ ...url.Values) string {
+	if key == "" {
+		return ""
+	}
+	return p.prefix + key
+}
+
+func (p *prefixStripStorage) GenerateURLs(keys []string, values ...url.Values) []string {
+	out := make([]string, len(keys))
+	for i, k := range keys {
+		out[i] = p.GenerateURL(k, values...)
+	}
+	return out
+}
+
+func (p *prefixStripStorage) ExtractKeyFromURL(uri string) string {
+	return strings.TrimPrefix(uri, p.prefix)
+}
+
+func (p *prefixStripStorage) ExtractKeyFromURLWithMode(uri string, _ bool) (string, error) {
+	return p.ExtractKeyFromURL(uri), nil
+}
+
+func (p *prefixStripStorage) GenerateUploadAuth(context.Context, storage.UploadAuthRequest) (storage.UploadAuthResult, error) {
+	return storage.UploadAuthResult{}, nil
+}
+
+func (p *prefixStripStorage) UploadFile(context.Context, io.Reader, string) (string, error) {
+	return "", nil
+}
+
+func (p *prefixStripStorage) UploadLocalFile(context.Context, string, string) (string, error) {
+	return "", nil
+}
+
+func (p *prefixStripStorage) IsFileExists(context.Context, string) (bool, error) { return false, nil }
+
+func (p *prefixStripStorage) DownloadFile(context.Context, string) (storage.DownloadResult, error) {
+	return storage.DownloadResult{}, errors.New("not implemented")
+}
+
+func (p *prefixStripStorage) DeleteFile(context.Context, string) error             { return nil }
+func (p *prefixStripStorage) MoveFile(context.Context, string, string, bool) error { return nil }
+func (p *prefixStripStorage) CopyFile(context.Context, string, string, bool) error { return nil }

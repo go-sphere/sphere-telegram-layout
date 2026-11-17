@@ -18,6 +18,5 @@ FROM gcr.io/distroless/static
 ARG TARGETOS=linux
 ARG TARGETARCH=amd64
 COPY --from=builder /app/build/${TARGETOS}_${TARGETARCH}/app /main
-ENV GIN_MODE=release
 ENTRYPOINT ["/main"]
 CMD ["--config", "/config/config.json"]

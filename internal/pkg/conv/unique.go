@@ -22,5 +22,5 @@ func UniqueSorted[T cmp.Ordered](origin []T) []T {
 		}
 	}
 	slices.Sort(result)
-	return slices.Clone(result)
+	return result
 }

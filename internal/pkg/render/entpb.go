@@ -7,6 +7,9 @@ import (
 )
 
 func (r *Render) AdminLite(value *ent.Admin) *entpb.Admin {
+	if value == nil {
+		return nil
+	}
 	return &entpb.Admin{
 		Id:       value.ID,
 		Nickname: value.Nickname,
@@ -26,6 +29,10 @@ func (r *Render) Admin(value *ent.Admin) *entpb.Admin {
 
 func (r *Render) AdminSession(value *ent.AdminSession) *entpb.AdminSession {
 	val, _ := entmap.ToProtoAdminSession(value)
+	if val == nil {
+		return nil
+	}
+	val.SessionKey = ""
 	return val
 }
 

@@ -2,6 +2,7 @@ package dao
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"testing"
 
@@ -54,6 +55,67 @@ func TestTransactionPanicRollsBackAndRepanics(t *testing.T) {
 				t.Fatalf("panic path committed %d admins, want 0", count)
 			}
 		})
+	}
+}
+
+func TestWithTxPreservesOriginalError(t *testing.T) {
+	origErr := errors.New("business failure")
+	rollbackErr := errors.New("rollback hook failed")
+
+	t.Run("joins rollback error with original error", func(t *testing.T) {
+		db := testClient(t)
+		_, err := WithTx(t.Context(), db, func(ctx context.Context, tx *ent.Client) (*int, error) {
+			insertAdmin(t, ctx, tx)
+			return nil, origErr
+		}, WithTxRollbackHook(func(next ent.Rollbacker) ent.Rollbacker {
+			return ent.RollbackFunc(func(ctx context.Context, tx *ent.Tx) error {
+				_ = next.Rollback(ctx, tx)
+				return rollbackErr
+			})
+		}))
+		if !errors.Is(err, origErr) {
+			t.Fatalf("WithTx() error = %v, want errors.Is(_, origErr)", err)
+		}
+		if !errors.Is(err, rollbackErr) {
+			t.Fatalf("WithTx() error = %v, want errors.Is(_, rollbackErr)", err)
+		}
+	})
+
+	t.Run("ignores ErrTxDone when context cancels before rollback", func(t *testing.T) {
+		db := testClient(t)
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+		_, err := WithTx(ctx, db, func(ctx context.Context, tx *ent.Client) (*int, error) {
+			cancel()
+			return nil, origErr
+		})
+		if !errors.Is(err, origErr) {
+			t.Fatalf("WithTx() error = %v, want origErr", err)
+		}
+	})
+}
+
+func TestWithTxExCommitsAndRollsBack(t *testing.T) {
+	db := testClient(t)
+	ctx := t.Context()
+
+	if err := WithTxEx(ctx, db, func(ctx context.Context, tx *ent.Client) error {
+		insertAdmin(t, ctx, tx)
+		return nil
+	}); err != nil {
+		t.Fatalf("WithTxEx(commit) error = %v", err)
+	}
+	count, err := db.Admin.Query().Count(ctx)
+	if err != nil || count != 1 {
+		t.Fatalf("admin count after commit = %d (err=%v), want 1", count, err)
+	}
+
+	wantErr := errors.New("abort second insert")
+	err = WithTxEx(ctx, db, func(ctx context.Context, tx *ent.Client) error {
+		return wantErr
+	})
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("WithTxEx(rollback) error = %v, want %v", err, wantErr)
 	}
 }
 

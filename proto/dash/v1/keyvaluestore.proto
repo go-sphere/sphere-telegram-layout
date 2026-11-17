@@ -48,7 +48,7 @@ message ListKeyValueStoresResponse {
 }
 
 message CreateKeyValueStoreRequest {
-  entpb.KeyValueStore key_value_store = 1;
+  entpb.KeyValueStore key_value_store = 1 [(buf.validate.field).required = true];
 }
 
 message CreateKeyValueStoreResponse {
@@ -56,7 +56,7 @@ message CreateKeyValueStoreResponse {
 }
 
 message UpdateKeyValueStoreRequest {
-  entpb.KeyValueStore key_value_store = 1;
+  entpb.KeyValueStore key_value_store = 1 [(buf.validate.field).required = true];
 }
 
 message UpdateKeyValueStoreResponse {

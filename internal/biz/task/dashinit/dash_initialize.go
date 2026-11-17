@@ -3,12 +3,9 @@ package dashinit
 import (
 	"context"
 	"fmt"
-	"strconv"
-	"time"
 
 	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/dao"
 	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/ent"
-	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/ent/keyvaluestore"
 	"github.com/go-sphere/sphere-telegram-layout/internal/server/dash"
 	servicedash "github.com/go-sphere/sphere-telegram-layout/internal/service/dash"
 	"github.com/go-sphere/sphere/log"
@@ -74,23 +71,8 @@ func (i *DashInitialize) Identifier() string {
 }
 
 func (i *DashInitialize) Start(ctx context.Context) error {
-	key := "did_init"
 	return dao.WithTxEx(ctx, i.db.Client, func(ctx context.Context, client *ent.Client) error {
-		exist, err := client.KeyValueStore.Query().Where(keyvaluestore.KeyEQ(key)).Exist(ctx)
-		if err != nil {
-			return err
-		}
-		if exist {
-			return nil
-		}
-		if err := initAdminIfNeed(ctx, client, i.seed); err != nil {
-			return err
-		}
-		_, err = client.KeyValueStore.Create().
-			SetKey(key).
-			SetValue([]byte(strconv.Itoa(int(time.Now().Unix())))).
-			Save(ctx)
-		return err
+		return initAdminIfNeed(ctx, client, i.seed)
 	})
 }
 

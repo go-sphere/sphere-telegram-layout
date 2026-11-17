@@ -4,6 +4,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/field"
+	"entgo.io/ent/schema/index"
 	"github.com/go-sphere/entc-extensions/entproto"
 	"github.com/go-sphere/sphere/utils/idgenerator"
 )
@@ -45,6 +46,12 @@ func (AdminSession) Fields() []ent.Field {
 		field.String("device_info").Annotations(entproto.Field(6)).Default("").Comment("设备信息"),
 		field.String("ip_address").Annotations(entproto.Field(7)).Default("").Comment("IP地址"),
 		times[0], times[1],
+	}
+}
+
+func (AdminSession) Indexes() []ent.Index {
+	return []ent.Index{
+		index.Fields("uid"),
 	}
 }
 

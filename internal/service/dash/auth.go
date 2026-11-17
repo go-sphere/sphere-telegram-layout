@@ -119,11 +119,12 @@ func (s *Service) LoginWithPassword(ctx context.Context, request *dashv1.LoginWi
 }
 
 func (s *Service) RefreshToken(ctx context.Context, request *dashv1.RefreshTokenRequest) (*dashv1.RefreshTokenResponse, error) {
+	claims, err := s.authRefresher.ParseToken(ctx, request.RefreshToken)
+	if err != nil {
+		return nil, errInvalidRefreshToken
+	}
+	var expiredSessionID int64
 	token, err := dao.WithTx[AdminToken](ctx, s.db.Client, func(ctx context.Context, client *ent.Client) (*AdminToken, error) {
-		claims, err := s.authRefresher.ParseToken(ctx, request.RefreshToken)
-		if err != nil {
-			return nil, errInvalidRefreshToken
-		}
 		session, err := client.AdminSession.Get(ctx, claims.UID)
 		if ent.IsNotFound(err) {
 			return nil, errInvalidRefreshToken
@@ -135,9 +136,8 @@ func (s *Service) RefreshToken(ctx context.Context, request *dashv1.RefreshToken
 			return nil, dashv1.AdminSessionError_ADMIN_SESSION_ERROR_REVOKED
 		}
 		if session.Expires < time.Now().Unix() {
-			return nil, dashv1.AdminSessionError_ADMIN_SESSION_ERROR_EXPIRED.Join(
-				client.AdminSession.UpdateOneID(session.ID).SetIsRevoked(true).Exec(ctx),
-			)
+			expiredSessionID = session.ID
+			return nil, dashv1.AdminSessionError_ADMIN_SESSION_ERROR_EXPIRED
 		}
 		if session.SessionKey != claims.Subject {
 			return nil, dashv1.AdminSessionError_ADMIN_SESSION_ERROR_KEY_NOT_MATCH
@@ -164,6 +164,11 @@ func (s *Service) RefreshToken(ctx context.Context, request *dashv1.RefreshToken
 		return s.createAdminToken(ctx, client, administrator)
 	})
 	if err != nil {
+		if expiredSessionID != 0 {
+			if revokeErr := s.db.AdminSession.UpdateOneID(expiredSessionID).SetIsRevoked(true).Exec(ctx); revokeErr != nil {
+				return nil, dashv1.AdminSessionError_ADMIN_SESSION_ERROR_EXPIRED.Join(revokeErr)
+			}
+		}
 		return nil, err
 	}
 	return &dashv1.RefreshTokenResponse{

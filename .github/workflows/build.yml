@@ -32,6 +32,8 @@ jobs:
       # template's declarations no longer cover what its generators emit.
       - name: Check generated dependencies
         run: git diff --exit-code -- go.mod go.sum
+      - name: Lint
+        run: make lint
       - name: Build
         run: make build
       - name: Test

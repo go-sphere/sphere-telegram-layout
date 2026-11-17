@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"time"
@@ -18,10 +19,11 @@ func Execute(app func(*config.Config) (*boot.Application, error)) {
 	}))
 	err := boot.Run(conf, app,
 		boot.WithLoggerBackend(backend),
+		boot.AddAfterStop(func(context.Context) error { return backend.Close() }),
 		boot.WithShutdownTimeout(5*time.Second),
 	)
 	if err != nil {
-		fmt.Printf("Boot error: %v", err)
+		fmt.Fprintf(os.Stderr, "Boot error: %v\n", err)
 		os.Exit(1)
 	}
 	fmt.Println("Boot done")

@@ -2,6 +2,7 @@ package dash
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/go-sphere/httpx"
@@ -88,6 +89,7 @@ func (w *Web) Start(ctx context.Context) error {
 					authRoute.BasePath(),
 					dashv1.EndpointsAuthService[:],
 					dashv1.OperationAuthServiceLoginWithPassword,
+					dashv1.OperationAuthServiceRefreshToken,
 				),
 			),
 			rateLimiter,
@@ -107,7 +109,11 @@ func (w *Web) Start(ctx context.Context) error {
 }
 
 func (w *Web) Stop(ctx context.Context) error {
-	return w.engine.Stop(ctx)
+	var closeErr error
+	if w.fileServer != nil {
+		closeErr = w.fileServer.Close()
+	}
+	return errors.Join(w.engine.Stop(ctx), closeErr)
 }
 
 func (w *Web) withPermission(resource string) httpx.Middleware {

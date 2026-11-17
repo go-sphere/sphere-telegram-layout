@@ -3,6 +3,7 @@ package dao
 import (
 	"context"
 	"database/sql"
+	"errors"
 
 	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/ent"
 	"github.com/go-sphere/sphere/log"
@@ -78,48 +79,20 @@ func WithTx[T any](ctx context.Context, db *ent.Client, exe func(ctx context.Con
 	}()
 	result, err := exe(ctx, tx.Client())
 	if err != nil {
-		if rErr := tx.Rollback(); rErr != nil {
-			return nil, rErr
+		if rErr := tx.Rollback(); rErr != nil && !errors.Is(rErr, sql.ErrTxDone) {
+			return nil, errors.Join(err, rErr)
 		}
 		return nil, err
 	}
 	if cErr := tx.Commit(); cErr != nil {
 		return nil, cErr
 	}
-	return result, err
+	return result, nil
 }
 
 func WithTxEx(ctx context.Context, db *ent.Client, exe func(ctx context.Context, tx *ent.Client) error, opts ...Option) error {
-	txOpts := newTxOptions(opts...)
-	tx, err := db.BeginTx(ctx, &sql.TxOptions{
-		Isolation: txOpts.Isolation,
-		ReadOnly:  txOpts.ReadOnly,
-	})
-	if err != nil {
-		return err
-	}
-	if txOpts.CommitHook != nil {
-		tx.OnCommit(txOpts.CommitHook)
-	}
-	if txOpts.RollbackHook != nil {
-		tx.OnRollback(txOpts.RollbackHook)
-	}
-	defer func() {
-		if reason := recover(); reason != nil {
-			log.Warn("WithTxEx panic", log.Any("error", reason))
-			_ = tx.Rollback()
-			panic(reason)
-		}
-	}()
-	err = exe(ctx, tx.Client())
-	if err != nil {
-		if rErr := tx.Rollback(); rErr != nil {
-			return rErr
-		}
-		return err
-	}
-	if cErr := tx.Commit(); cErr != nil {
-		return cErr
-	}
+	_, err := WithTx(ctx, db, func(ctx context.Context, tx *ent.Client) (*struct{}, error) {
+		return nil, exe(ctx, tx)
+	}, opts...)
 	return err
 }

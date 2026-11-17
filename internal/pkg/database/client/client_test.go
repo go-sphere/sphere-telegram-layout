@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"database/sql"
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -46,6 +47,31 @@ func TestAutoMigrateDoesNotDropColumnsByDefault(t *testing.T) {
 	})
 	if hasColumn(t, db, "admins", "legacy_value") {
 		t.Fatal("destructive auto-migration did not drop the legacy column")
+	}
+}
+
+func TestNewDataBaseClientCreatesSQLiteDir(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "nested", "db")
+	dsn := "file:" + filepath.Join(dir, "app.db") + "?cache=shared&mode=rwc"
+	db, err := NewDataBaseClient(Config{Type: "sqlite3", Path: dsn})
+	if err != nil {
+		t.Fatalf("NewDataBaseClient() error = %v", err)
+	}
+	t.Cleanup(func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("close database: %v", err)
+		}
+	})
+	if info, err := os.Stat(dir); err != nil || !info.IsDir() {
+		t.Fatalf("expected directory %s to be created, err=%v", dir, err)
+	}
+}
+
+func TestNewDataBaseClientClosesOnSchemaError(t *testing.T) {
+	db, err := NewDataBaseClient(Config{Type: "sqlite3", Path: t.TempDir()})
+	if err == nil {
+		_ = db.Close()
+		t.Fatal("expected Schema.Create error when sqlite path is a directory")
 	}
 }
 

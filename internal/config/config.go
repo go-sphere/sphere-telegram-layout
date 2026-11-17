@@ -77,6 +77,9 @@ func NewConfig(path string) (*Config, error) {
 	if config.Dash.AuthJWT == "" || config.Dash.RefreshJWT == "" {
 		return nil, fmt.Errorf("dash auth_jwt and refresh_jwt must be non-empty")
 	}
+	if config.Dash.AuthJWT == config.Dash.RefreshJWT {
+		return nil, fmt.Errorf("dash auth_jwt and refresh_jwt must be different")
+	}
 	if err := config.Dash.HTTP.Validate(); err != nil {
 		return nil, fmt.Errorf("dash http: %w", err)
 	}

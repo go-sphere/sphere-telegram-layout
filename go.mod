@@ -6,7 +6,6 @@ require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.12-20260825204119-511051f7f437.2
 	buf.build/go/protovalidate v1.4.0
 	entgo.io/ent v0.14.6
-	github.com/alitto/pond/v2 v2.7.1
 	github.com/go-sphere/binding v0.0.5
 	github.com/go-sphere/confstore v0.0.5
 	github.com/go-sphere/entc-extensions/entconv v0.0.5

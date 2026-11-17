@@ -24,8 +24,8 @@ func (s *Service) BodyPathTest(ctx context.Context, request *sharedv1.BodyPathTe
 	return &sharedv1.BodyPathTestResponse{
 		Response: []*sharedv1.BodyPathTestResponse_Response{
 			{
-				FieldTest1: request.Request.FieldTest1,
-				FieldTest2: request.Request.FieldTest2,
+				FieldTest1: request.GetRequest().GetFieldTest1(),
+				FieldTest2: request.GetRequest().GetFieldTest2(),
 			},
 		},
 	}, nil

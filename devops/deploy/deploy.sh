@@ -10,9 +10,9 @@
 set -euo pipefail
 
 # --- Constants ---
-readonly REMOTE_HOST="orb"
-readonly REMOTE_ARCH="arm64"
-readonly PROJECT_NAME="sphere"
+readonly REMOTE_HOST="${REMOTE_HOST:-orb}"
+readonly REMOTE_ARCH="${REMOTE_ARCH:-arm64}"
+readonly PROJECT_NAME="${PROJECT_NAME:-sphere}"
 
 readonly SERVICE_NAME="${PROJECT_NAME}.service"
 readonly REMOTE_DIR="/opt/${PROJECT_NAME}"
@@ -64,8 +64,9 @@ log_warn() {
 
 # Show usage information.
 usage() {
-    printf "Usage: %s {build|install|deploy|stop|start}\n" "$0"
+    printf "Usage: %s {build|install|deploy|stop|start|restart}\n" "$0"
     printf "Commands:\n"
+    printf "  build    - Build the application binary and assets.\n"
     printf "  install  - Install the systemd service on the remote host.\n"
     printf "  deploy   - Build and deploy a new version of the application.\n"
     printf "  stop     - Stop the application service on the remote host.\n"
@@ -187,11 +188,9 @@ deploy_app() {
     log_info "Performing deployment on remote host..."
     local deploy_commands="
         set -euo pipefail;
-        echo 'Moving binary to ${REMOTE_DIR}...';
-        sudo mv '${remote_tmp_binary}' '${REMOTE_DIR}/';
-
-        echo 'Making binary executable...';
-        sudo chmod +x '${REMOTE_DIR}/${binary_name}';
+        echo 'Installing binary to ${REMOTE_DIR}...';
+        sudo install -o '${PROJECT_NAME}' -g '${PROJECT_NAME}' -m 0755 '${remote_tmp_binary}' '${REMOTE_DIR}/${binary_name}';
+        sudo rm -f '${remote_tmp_binary}';
 
         echo 'Stopping service ${SERVICE_NAME}...';
         sudo systemctl stop '${SERVICE_NAME}';
@@ -204,7 +203,7 @@ deploy_app() {
         sudo systemctl restart '${SERVICE_NAME}';
 
         echo 'Checking service status...';
-        sudo systemctl status '${SERVICE_NAME}';
+        sudo systemctl --no-pager status '${SERVICE_NAME}';
     "
     if ! run_remote "${deploy_commands}"; then
         log_error "Deployment script failed on remote host."
@@ -228,7 +227,7 @@ start_service() {
     if ! run_remote "sudo systemctl start '${SERVICE_NAME}'"; then
         log_error "Failed to start the service."
     fi
-    run_remote "sudo systemctl status '${SERVICE_NAME}'"
+    run_remote "sudo systemctl --no-pager status '${SERVICE_NAME}'"
     log_success "Service started."
 }
 
@@ -238,7 +237,7 @@ restart_service() {
     if ! run_remote "sudo systemctl restart '${SERVICE_NAME}'"; then
         log_error "Failed to restart the service."
     fi
-    run_remote "sudo systemctl status '${SERVICE_NAME}'"
+    run_remote "sudo systemctl --no-pager status '${SERVICE_NAME}'"
     log_success "Service restarted."
 }
 
@@ -256,6 +255,9 @@ main() {
     fi
 
     case "${command}" in
+        build)
+            build_app
+            ;;
         install)
             install_service
             ;;

@@ -30,6 +30,9 @@ func parseError(err error) (int32, int32, string) {
 	if ce, ok := errors.AsType[*ent.ConstraintError](err); ok {
 		return EntConstraintError(ce)
 	}
+	if ve, ok := errors.AsType[*ent.ValidationError](err); ok {
+		return EntValidationError(ve)
+	}
 	if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
 		return 0, http.StatusRequestEntityTooLarge, http.StatusText(http.StatusRequestEntityTooLarge)
 	}
@@ -47,5 +50,9 @@ func EntNotFoundError(*ent.NotFoundError) (int32, int32, string) {
 }
 
 func EntConstraintError(*ent.ConstraintError) (int32, int32, string) {
+	return 0, http.StatusBadRequest, http.StatusText(http.StatusBadRequest)
+}
+
+func EntValidationError(*ent.ValidationError) (int32, int32, string) {
 	return 0, http.StatusBadRequest, http.StatusText(http.StatusBadRequest)
 }

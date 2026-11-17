@@ -5,7 +5,9 @@ import (
 	"strings"
 
 	"entgo.io/ent/dialect/sql"
+	"github.com/go-sphere/httpx"
 	dashv1 "github.com/go-sphere/sphere-telegram-layout/api/dash/v1"
+	"github.com/go-sphere/sphere-telegram-layout/api/entpb"
 	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/conv"
 	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/dao"
 	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/ent"
@@ -18,8 +20,14 @@ import (
 var _ dashv1.AdminServiceHTTPServer = (*Service)(nil)
 
 func (s *Service) CreateAdmin(ctx context.Context, request *dashv1.CreateAdminRequest) (*dashv1.CreateAdminResponse, error) {
+	if request.GetAdmin() == nil {
+		return nil, httpx.NewBadRequestError("admin is required")
+	}
 	request.Admin.Avatar = s.storage.ExtractKeyFromURL(request.Admin.Avatar)
 	request.Admin.Username = NormalizeUsername(request.Admin.Username)
+	if request.Admin.Username == "" {
+		return nil, httpx.NewBadRequestError("username is required")
+	}
 	hashed, err := secure.CryptPassword(request.Admin.Password)
 	if err != nil {
 		return nil, err
@@ -73,6 +81,13 @@ func (s *Service) ListAdmins(ctx context.Context, request *dashv1.ListAdminsRequ
 		return nil, err
 	}
 	totalPage, pageSize := conv.Page(count, int(request.PageSize))
+	if request.Page < 0 || request.Page >= int64(totalPage) {
+		return &dashv1.ListAdminsResponse{
+			Admins:    []*entpb.Admin{},
+			TotalSize: int64(count),
+			TotalPage: int64(totalPage),
+		}, nil
+	}
 	all, err := query.Clone().Limit(pageSize).Order(admin.ByID(sql.OrderDesc())).Offset(pageSize * int(request.Page)).All(ctx)
 	if err != nil {
 		return nil, err
@@ -87,7 +102,14 @@ func (s *Service) ListAdmins(ctx context.Context, request *dashv1.ListAdminsRequ
 // UpdateAdmin updates an admin. Setting a new password also revokes all of
 // that admin's refresh sessions, so a leaked refresh token stops working.
 func (s *Service) UpdateAdmin(ctx context.Context, req *dashv1.UpdateAdminRequest) (*dashv1.UpdateAdminResponse, error) {
+	if req.GetAdmin() == nil {
+		return nil, httpx.NewBadRequestError("admin is required")
+	}
+	req.Admin.Avatar = s.storage.ExtractKeyFromURL(req.Admin.Avatar)
 	req.Admin.Username = NormalizeUsername(req.Admin.Username)
+	if req.Admin.Username == "" {
+		return nil, httpx.NewBadRequestError("username is required")
+	}
 	passwordChanged := req.Admin.Password != ""
 	if passwordChanged {
 		hashed, err := secure.CryptPassword(req.Admin.Password)
@@ -100,7 +122,7 @@ func (s *Service) UpdateAdmin(ctx context.Context, req *dashv1.UpdateAdminReques
 		u, err := entbind.UpdateOneAdmin(
 			client.Admin.UpdateOneID(req.Admin.Id),
 			req.Admin,
-			entbind.IgnoreSetZeroField(admin.FieldPassword),
+			entbind.IgnoreSetZeroField(admin.FieldPassword, admin.FieldRoles),
 		).Save(ctx)
 		if err != nil {
 			return nil, err

@@ -1,6 +1,4 @@
 # https://raw.githubusercontent.com/grafana/loki/v3.4.1/production/docker-compose.yaml
-version: "3.3"
-
 networks:
   loki:
 

@@ -4,7 +4,9 @@ import (
 	"context"
 
 	"entgo.io/ent/dialect/sql"
+	"github.com/go-sphere/httpx"
 	dashv1 "github.com/go-sphere/sphere-telegram-layout/api/dash/v1"
+	"github.com/go-sphere/sphere-telegram-layout/api/entpb"
 	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/conv"
 	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/ent/keyvaluestore"
 	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/render/entbind"
@@ -13,6 +15,9 @@ import (
 var _ dashv1.KeyValueStoreServiceHTTPServer = (*Service)(nil)
 
 func (s *Service) CreateKeyValueStore(ctx context.Context, request *dashv1.CreateKeyValueStoreRequest) (*dashv1.CreateKeyValueStoreResponse, error) {
+	if request.GetKeyValueStore() == nil {
+		return nil, httpx.NewBadRequestError("key_value_store is required")
+	}
 	item, err := entbind.CreateKeyValueStore(s.db.KeyValueStore.Create(), request.KeyValueStore, entbind.IgnoreField(keyvaluestore.FieldID)).Save(ctx)
 	if err != nil {
 		return nil, err
@@ -47,6 +52,13 @@ func (s *Service) ListKeyValueStores(ctx context.Context, request *dashv1.ListKe
 		return nil, err
 	}
 	totalPage, pageSize := conv.Page(count, int(request.PageSize))
+	if request.Page < 0 || request.Page >= int64(totalPage) {
+		return &dashv1.ListKeyValueStoresResponse{
+			KeyValueStores: []*entpb.KeyValueStore{},
+			TotalSize:      int64(count),
+			TotalPage:      int64(totalPage),
+		}, nil
+	}
 	all, err := query.Clone().Limit(pageSize).Order(keyvaluestore.ByID(sql.OrderDesc())).Offset(pageSize * int(request.Page)).All(ctx)
 	if err != nil {
 		return nil, err
@@ -59,6 +71,9 @@ func (s *Service) ListKeyValueStores(ctx context.Context, request *dashv1.ListKe
 }
 
 func (s *Service) UpdateKeyValueStore(ctx context.Context, request *dashv1.UpdateKeyValueStoreRequest) (*dashv1.UpdateKeyValueStoreResponse, error) {
+	if request.GetKeyValueStore() == nil {
+		return nil, httpx.NewBadRequestError("key_value_store is required")
+	}
 	item, err := entbind.UpdateOneKeyValueStore(
 		s.db.KeyValueStore.UpdateOneID(request.KeyValueStore.Id),
 		request.KeyValueStore,

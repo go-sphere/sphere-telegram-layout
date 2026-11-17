@@ -41,6 +41,11 @@ func TestNewConfigValidatesRequiredSecrets(t *testing.T) {
 			content: `{"dash":{"auth_jwt":"auth-secret"}}`,
 			wantErr: "dash auth_jwt and refresh_jwt must be non-empty",
 		},
+		{
+			name:    "identical dash secrets",
+			content: `{"dash":{"auth_jwt":"same-secret","refresh_jwt":"same-secret"}}`,
+			wantErr: "dash auth_jwt and refresh_jwt must be different",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

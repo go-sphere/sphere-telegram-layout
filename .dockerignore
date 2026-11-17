@@ -3,7 +3,12 @@
 /build
 /db
 /var
+/api
+/swagger
 /devops
 /config.json
+/config_gen.json
+/code_review
 /go.work
 /go.work.sum
+**/node_modules

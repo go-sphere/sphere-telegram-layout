@@ -9,7 +9,11 @@ import (
 )
 
 func (d *Dao) GetAdmins(ctx context.Context, ids []int64) (map[int64]*ent.Admin, error) {
-	admins, err := d.Client.Admin.Query().Where(admin.IDIn(conv.UniqueSorted(ids)...)).All(ctx)
+	unique := conv.UniqueSorted(ids)
+	if len(unique) == 0 {
+		return map[int64]*ent.Admin{}, nil
+	}
+	admins, err := d.Client.Admin.Query().Where(admin.IDIn(unique...)).All(ctx)
 	if err != nil {
 		return nil, err
 	}

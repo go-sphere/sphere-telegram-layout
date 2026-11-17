@@ -1,11 +1,9 @@
 package dash
 
 import (
-	"github.com/alitto/pond/v2"
 	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/dao"
 	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/render"
 	"github.com/go-sphere/sphere/cache"
-	"github.com/go-sphere/sphere/cache/memory"
 	"github.com/go-sphere/sphere/server/auth/authorizer"
 	"github.com/go-sphere/sphere/server/auth/jwtauth"
 	"github.com/go-sphere/sphere/storage"
@@ -25,9 +23,7 @@ type Service struct {
 	render *render.Render
 
 	cache   cache.ByteCache
-	session cache.ByteCache
 	storage storage.CDNStorage
-	tasks   pond.ResultPool[string]
 
 	authorizer    TokenAuthorizer
 	authRefresher TokenAuthorizer
@@ -38,9 +34,7 @@ func NewService(db *dao.Dao, cache cache.ByteCache, store storage.CDNStorage) *S
 		db:      db,
 		render:  render.NewRender(db, store, true),
 		cache:   cache,
-		session: memory.NewByteCache(),
 		storage: store,
-		tasks:   pond.NewResultPool[string](16),
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/go-sphere/httpx"
+	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/ent"
 	"github.com/go-sphere/sphere/server/httpz"
 	"github.com/go-sphere/sphere/storage/storageerr"
 )
@@ -44,6 +45,16 @@ func TestParseErrorStatuses(t *testing.T) {
 		{
 			name: "storage invalid filename",
 			err:  storageerr.ErrFileNameInvalid,
+			want: http.StatusBadRequest,
+		},
+		{
+			name: "ent validation error",
+			err:  &ent.ValidationError{Name: "username"},
+			want: http.StatusBadRequest,
+		},
+		{
+			name: "wrapped ent validation error",
+			err:  fmt.Errorf("save admin: %w", &ent.ValidationError{Name: "username"}),
 			want: http.StatusBadRequest,
 		},
 	}

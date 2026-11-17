@@ -6,6 +6,7 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 	dashv1 "github.com/go-sphere/sphere-telegram-layout/api/dash/v1"
+	"github.com/go-sphere/sphere-telegram-layout/api/entpb"
 	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/conv"
 	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/database/ent/adminsession"
 )
@@ -38,6 +39,13 @@ func (s *Service) ListAdminSessions(ctx context.Context, request *dashv1.ListAdm
 		return nil, err
 	}
 	totalPage, pageSize := conv.Page(count, int(request.PageSize))
+	if request.Page < 0 || request.Page >= int64(totalPage) {
+		return &dashv1.ListAdminSessionsResponse{
+			AdminSessions: []*entpb.AdminSession{},
+			TotalSize:     int64(count),
+			TotalPage:     int64(totalPage),
+		}, nil
+	}
 	all, err := query.Clone().Limit(pageSize).Order(adminsession.ByID(sql.OrderDesc())).Offset(pageSize * int(request.Page)).All(ctx)
 	if err != nil {
 		return nil, err

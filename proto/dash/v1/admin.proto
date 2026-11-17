@@ -54,8 +54,13 @@ message CreateAdminRequest {
     (buf.validate.field).required = true,
     (buf.validate.field).cel = {
       id: "admin_password_min_length"
-      expression: "size(this.password) == 0 || size(this.password) >= 8"
+      expression: "size(bytes(this.password)) >= 8"
       message: "密码长度不能小于8位"
+    },
+    (buf.validate.field).cel = {
+      id: "admin_password_max_length"
+      expression: "size(bytes(this.password)) <= 72"
+      message: "密码长度不能超过72字节"
     },
     (buf.validate.field).cel = {
       id: "admin_username_not_empty"
@@ -79,8 +84,13 @@ message UpdateAdminRequest {
     },
     (buf.validate.field).cel = {
       id: "admin_password_min_length"
-      expression: "size(this.password) == 0 || size(this.password) >= 8"
+      expression: "size(bytes(this.password)) == 0 || size(bytes(this.password)) >= 8"
       message: "密码长度不能小于8位"
+    },
+    (buf.validate.field).cel = {
+      id: "admin_password_max_length"
+      expression: "size(bytes(this.password)) <= 72"
+      message: "密码长度不能超过72字节"
     }
   ];
 }
