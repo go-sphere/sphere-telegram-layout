@@ -20,6 +20,23 @@ service AuthService {
       body: "*"
     };
   }
+
+  // Logout deletes the auth cookie and revokes the refresh session it names.
+  //
+  // The cookie is HttpOnly, so this endpoint is the only way a browser can drop
+  // that credential: scripts cannot read, overwrite, or delete it. A logout that
+  // only clears client state leaves the token valid until it expires.
+  // Idempotent: an unparsable token or a session row that is already gone counts
+  // as logged out and still clears the cookie. The access token itself is a JWT
+  // and stays valid until it expires — deleting the cookie is what makes the
+  // logout real, so send this request and let it finish before navigating away
+  // (a navigation aborts in-flight requests and the Set-Cookie is then lost).
+  rpc Logout(LogoutRequest) returns (LogoutResponse) {
+    option (google.api.http) = {
+      post: "/api/auth/logout"
+      body: "*"
+    };
+  }
 }
 
 message LoginWithPasswordRequest {
@@ -42,6 +59,17 @@ message RefreshTokenResponse {
   string refresh_token = 2;
   int64 expires_at = 3;
 }
+
+message LogoutRequest {
+  // Intentionally NOT required. Clearing the cookie is the point of the call,
+  // and a client that still holds the cookie but lost its refresh token (page
+  // reload, wiped local storage) must be able to do exactly that. Marking this
+  // required makes the request fail validation before the handler runs, so the
+  // cookie survives the logout it was supposed to perform.
+  string refresh_token = 1;
+}
+
+message LogoutResponse {}
 
 enum AuthError {
   option (sphere.errors.default_status) = 500;

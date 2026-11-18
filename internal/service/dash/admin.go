@@ -105,6 +105,10 @@ func (s *Service) UpdateAdmin(ctx context.Context, req *dashv1.UpdateAdminReques
 	if req.GetAdmin() == nil {
 		return nil, httpx.NewBadRequestError("admin is required")
 	}
+	if currentID, err := s.GetCurrentID(ctx); err == nil && currentID == req.Admin.Id {
+		// Prevent an authenticated admin from changing their own roles.
+		req.Admin.Roles = nil
+	}
 	req.Admin.Avatar = s.storage.ExtractKeyFromURL(req.Admin.Avatar)
 	req.Admin.Username = NormalizeUsername(req.Admin.Username)
 	if req.Admin.Username == "" {

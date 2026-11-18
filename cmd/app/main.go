@@ -4,6 +4,10 @@ import (
 	"fmt"
 	"os"
 
+	// Uncomment to embed the Go IANA timezone database into the binary for
+	// minimal or scratch containers without system tzdata.
+	// _ "time/tzdata"
+
 	"github.com/go-sphere/sphere-telegram-layout/internal/pkg/app"
 	"github.com/go-sphere/sphere/core/boot"
 	"github.com/go-sphere/sphere/utils/idgenerator"

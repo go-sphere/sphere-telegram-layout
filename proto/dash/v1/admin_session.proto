@@ -43,11 +43,11 @@ enum AdminSessionError {
 
   ADMIN_SESSION_ERROR_UNSPECIFIED = 0;
   ADMIN_SESSION_ERROR_REVOKED = 1000 [(sphere.errors.options) = {
-    status: 403
+    status: 401
     message: "会话已被撤销"
   }];
   ADMIN_SESSION_ERROR_EXPIRED = 1001 [(sphere.errors.options) = {
-    status: 403
+    status: 401
     message: "会话已过期"
   }];
   ADMIN_SESSION_ERROR_KEY_NOT_MATCH = 1002 [(sphere.errors.options) = {

@@ -3,6 +3,7 @@ package dash
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/go-sphere/httpx"
@@ -48,9 +49,20 @@ func (w *Web) Start(ctx context.Context) error {
 	jwtAuthorizer := jwtauth.NewJwtAuth[jwtauth.RBACClaims[int64]](w.config.AuthJWT)
 	jwtRefresher := jwtauth.NewJwtAuth[jwtauth.RBACClaims[int64]](w.config.RefreshJWT)
 
-	authMiddleware := auth.NewAuthMiddleware[int64, jwtauth.RBACClaims[int64]](
+	authMiddleware := auth.NewAuthMiddleware(
 		jwtAuthorizer,
-		auth.WithHeaderLoader(auth.AuthorizationHeader),
+		auth.WithLoader(func(ctx httpx.Context) (string, error) {
+			// API clients send the Authorization header; browser requests that
+			// cannot set headers (page navigations, <img>, EventSource) fall
+			// back to the auth cookie written at login/refresh.
+			if header := strings.TrimSpace(ctx.Header(auth.AuthorizationHeader)); header != "" {
+				return header, nil
+			}
+			if cookie, err := ctx.Cookie(dash.AuthTokenCookieName); err == nil && cookie != "" {
+				return strings.TrimSpace(cookie), nil
+			}
+			return "", nil
+		}),
 		auth.WithPrefixTransform(auth.AuthorizationPrefixBearer),
 		auth.WithAbortOnError(true),
 	)
@@ -71,7 +83,6 @@ func (w *Web) Start(ctx context.Context) error {
 
 	initDefaultRolesACL(w.acl)
 
-	sharedv1.RegisterStorageServiceHTTPServer(needAuthRoute, w.sharedSvc)
 	sharedv1.RegisterTestServiceHTTPServer(needAuthRoute, w.sharedSvc)
 
 	// 文件上传下载路由, 上传使用一次性 `key` 鉴权, 下载无需鉴权
@@ -100,6 +111,7 @@ func (w *Web) Start(ctx context.Context) error {
 	// Every management service requires the admin permission; a signed
 	// token alone (e.g. an admin created with no roles) is not enough.
 	adminRoute := needAuthRoute.Group("/", w.withPermission(dash.PermissionAdmin))
+	sharedv1.RegisterStorageServiceHTTPServer(adminRoute, w.sharedSvc)
 	dashv1.RegisterAdminServiceHTTPServer(adminRoute, w.service)
 	dashv1.RegisterAdminSessionServiceHTTPServer(adminRoute, w.service)
 	dashv1.RegisterSystemServiceHTTPServer(adminRoute, w.service)

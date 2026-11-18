@@ -10,7 +10,9 @@ import (
 	"math"
 	"net"
 	"net/http"
+	"net/http/cookiejar"
 	"net/url"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -135,6 +137,113 @@ func TestWebAuthAndAdminEndpoints(t *testing.T) {
 		if status, body := doJSONRequest(t, http.MethodPost, baseURL+"/api/cache/reset", map[string]any{}, bearer); status != http.StatusForbidden {
 			t.Errorf("POST /api/cache/reset status = %d, want %d, body=%s", status, http.StatusForbidden, body)
 		}
+		if status, body := doJSONRequest(t, http.MethodPost, baseURL+"/api/upload/token", map[string]any{"filename": "test.txt"}, bearer); status != http.StatusForbidden {
+			t.Errorf("POST /api/upload/token status = %d, want %d, body=%s", status, http.StatusForbidden, body)
+		}
+		// TestService stays on needAuthRoute while StorageService requires PermissionAdmin.
+		if status, body := doJSONRequest(t, http.MethodPost, baseURL+"/api/test/body_path_test", map[string]any{"field_test1": "ok"}, bearer); status != http.StatusOK {
+			t.Errorf("POST /api/test/body_path_test status = %d, want %d, body=%s", status, http.StatusOK, body)
+		}
+		if status, body := doJSONRequest(t, http.MethodPost, baseURL+"/api/upload/token", map[string]any{"filename": "test.txt"}, map[string]string{"Authorization": "Bearer " + root.AccessToken}); status != http.StatusOK {
+			t.Errorf("root POST /api/upload/token status = %d, want %d, body=%s", status, http.StatusOK, body)
+		}
+	})
+
+	t.Run("updating self preserves existing roles while updating another admin changes roles", func(t *testing.T) {
+		baseURL, _, cleanup := setupTestWeb(t)
+		defer cleanup()
+
+		root := loginTokens(t, baseURL, testAdminUsername, testAdminPassword)
+		rootBearer := map[string]string{"Authorization": "Bearer " + root.AccessToken}
+
+		createAdmin := func(username, password string, roles []string) int64 {
+			t.Helper()
+			status, body := doJSONRequest(t, http.MethodPost, baseURL+"/api/admin/create", map[string]any{
+				"admin": map[string]any{"username": username, "password": password, "roles": roles},
+			}, rootBearer)
+			if status != http.StatusOK {
+				t.Fatalf("create %s status = %d, body=%s", username, status, body)
+			}
+			var created struct {
+				Data struct {
+					Admin struct {
+						ID int64 `json:"id"`
+					} `json:"admin"`
+				} `json:"data"`
+			}
+			if err := json.Unmarshal([]byte(body), &created); err != nil || created.Data.Admin.ID == 0 {
+				t.Fatalf("parse created admin: %v, body=%s", err, body)
+			}
+			return created.Data.Admin.ID
+		}
+
+		editorID := createAdmin("editor", "Editor#123", []string{servicedash.PermissionAdmin})
+		otherID := createAdmin("other", "Other#123", []string{})
+
+		editor := loginTokens(t, baseURL, "editor", "Editor#123")
+		editorBearer := map[string]string{"Authorization": "Bearer " + editor.AccessToken}
+
+		for _, attemptedRoles := range [][]string{{servicedash.PermissionAll}, {}} {
+			status, body := doJSONRequest(t, http.MethodPost, baseURL+"/api/admin/update", map[string]any{
+				"admin": map[string]any{
+					"id":       editorID,
+					"username": "editor",
+					"nickname": "Updated Editor",
+					"roles":    attemptedRoles,
+				},
+			}, editorBearer)
+			if status != http.StatusOK {
+				t.Fatalf("self update status = %d, body=%s", status, body)
+			}
+			var updated struct {
+				Data struct {
+					Admin struct {
+						Nickname string   `json:"nickname"`
+						Roles    []string `json:"roles"`
+					} `json:"admin"`
+				} `json:"data"`
+			}
+			if err := json.Unmarshal([]byte(body), &updated); err != nil {
+				t.Fatalf("parse self update response: %v, body=%s", err, body)
+			}
+			if updated.Data.Admin.Nickname != "Updated Editor" {
+				t.Fatalf("self update nickname = %q, want %q", updated.Data.Admin.Nickname, "Updated Editor")
+			}
+			if !slices.Equal(updated.Data.Admin.Roles, []string{servicedash.PermissionAdmin}) {
+				t.Fatalf("self update changed roles to %v (attempted %v), want [%s]", updated.Data.Admin.Roles, attemptedRoles, servicedash.PermissionAdmin)
+			}
+		}
+
+		// Updating another admin's roles succeeds and takes effect on subsequent login.
+		status, body := doJSONRequest(t, http.MethodPost, baseURL+"/api/admin/update", map[string]any{
+			"admin": map[string]any{
+				"id":       otherID,
+				"username": "other",
+				"roles":    []string{servicedash.PermissionAdmin},
+			},
+		}, rootBearer)
+		if status != http.StatusOK {
+			t.Fatalf("update other admin status = %d, body=%s", status, body)
+		}
+		var updatedOther struct {
+			Data struct {
+				Admin struct {
+					Roles []string `json:"roles"`
+				} `json:"admin"`
+			} `json:"data"`
+		}
+		if err := json.Unmarshal([]byte(body), &updatedOther); err != nil {
+			t.Fatalf("parse update other response: %v, body=%s", err, body)
+		}
+		if !slices.Equal(updatedOther.Data.Admin.Roles, []string{servicedash.PermissionAdmin}) {
+			t.Fatalf("other admin roles = %v, want [%s]", updatedOther.Data.Admin.Roles, servicedash.PermissionAdmin)
+		}
+		otherTokens := loginTokens(t, baseURL, "other", "Other#123")
+		if status, body := doJSONRequest(t, http.MethodGet, baseURL+"/api/admin/list", nil, map[string]string{
+			"Authorization": "Bearer " + otherTokens.AccessToken,
+		}); status != http.StatusOK {
+			t.Fatalf("promoted admin list status = %d, want 200, body=%s", status, body)
+		}
 	})
 
 	t.Run("password change revokes refresh sessions", func(t *testing.T) {
@@ -230,6 +339,179 @@ func TestWebAuthAndAdminEndpoints(t *testing.T) {
 			}
 		}
 	})
+}
+
+// TestWebAuthCookie covers the browser auth path: login and refresh write the
+// auth_token cookie and the auth middleware accepts it on requests that carry
+// no Authorization header.
+func TestWebAuthCookie(t *testing.T) {
+	baseURL, _, cleanup := setupTestWeb(t)
+	defer cleanup()
+
+	base, err := url.Parse(baseURL)
+	if err != nil {
+		t.Fatalf("parse base url failed: %v", err)
+	}
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatalf("new cookie jar failed: %v", err)
+	}
+	httpClient := &http.Client{Timeout: time.Second * 5, Jar: jar}
+
+	status, header, body := doJSONRequestWithClient(t, httpClient, http.MethodPost, baseURL+"/api/auth/login", map[string]string{
+		"username": testAdminUsername,
+		"password": testAdminPassword,
+	}, nil)
+	if status != http.StatusOK {
+		t.Fatalf("login status = %d, want 200, body=%s", status, body)
+	}
+	tokens := parseAuthTokens(t, body)
+
+	authCookie := authCookieFromHeader(header)
+	if authCookie == nil {
+		t.Fatalf("login response missing %s cookie, headers=%v", servicedash.AuthTokenCookieName, header)
+	}
+	if authCookie.Value != tokens.AccessToken {
+		t.Fatalf("cookie value does not match the access token, value_len=%d token_len=%d", len(authCookie.Value), len(tokens.AccessToken))
+	}
+	maxAge := int(servicedash.AuthTokenValidDuration.Seconds())
+	if authCookie.Path != "/" || authCookie.MaxAge != maxAge || authCookie.SameSite != http.SameSiteLaxMode || !authCookie.HttpOnly || authCookie.Secure {
+		t.Fatalf("cookie attrs = path %q max-age %d samesite %v http-only %v secure %v, want /, %d, Lax, true, false",
+			authCookie.Path, authCookie.MaxAge, authCookie.SameSite, authCookie.HttpOnly, authCookie.Secure, maxAge)
+	}
+
+	// The jar replays the cookie; these requests send no Authorization header.
+	status, _, body = doJSONRequestWithClient(t, httpClient, http.MethodGet, baseURL+"/api/admin/list", nil, nil)
+	if status != http.StatusOK {
+		t.Fatalf("cookie-authenticated admin list status = %d, want 200, body=%s", status, body)
+	}
+
+	// Refresh rotates the access token and must rotate the cookie with it.
+	status, _, body = doJSONRequestWithClient(t, httpClient, http.MethodPost, baseURL+"/api/auth/refresh", map[string]string{
+		"refresh_token": tokens.RefreshToken,
+	}, nil)
+	if status != http.StatusOK {
+		t.Fatalf("refresh status = %d, want 200, body=%s", status, body)
+	}
+	refreshed := parseAuthTokens(t, body)
+	var rotated string
+	for _, cookie := range jar.Cookies(base) {
+		if cookie.Name == servicedash.AuthTokenCookieName {
+			rotated = cookie.Value
+		}
+	}
+	if rotated != refreshed.AccessToken {
+		t.Fatalf("refresh did not rotate the auth cookie, value_len=%d token_len=%d", len(rotated), len(refreshed.AccessToken))
+	}
+
+	// A bogus cookie must not authenticate, mirroring the invalid-Bearer case.
+	badJar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatalf("new cookie jar failed: %v", err)
+	}
+	badJar.SetCookies(base, []*http.Cookie{{Name: servicedash.AuthTokenCookieName, Value: "not-a-jwt", Path: "/"}})
+	status, _, body = doJSONRequestWithClient(t, &http.Client{Timeout: time.Second * 5, Jar: badJar}, http.MethodGet, baseURL+"/api/admin/list", nil, nil)
+	if status != http.StatusUnauthorized {
+		t.Fatalf("invalid cookie status = %d, want 401, body=%s", status, body)
+	}
+
+	// Behind a TLS-terminating proxy the cookie must be marked Secure.
+	status, header, body = doJSONRequestWithClient(t, httpClient, http.MethodPost, baseURL+"/api/auth/login", map[string]string{
+		"username": testAdminUsername,
+		"password": testAdminPassword,
+	}, map[string]string{"X-Forwarded-Proto": "https"})
+	if status != http.StatusOK {
+		t.Fatalf("https login status = %d, want 200, body=%s", status, body)
+	}
+	secureCookie := authCookieFromHeader(header)
+	if secureCookie == nil || !secureCookie.Secure {
+		t.Fatalf("cookie behind X-Forwarded-Proto=https is not Secure, cookie=%+v", secureCookie)
+	}
+}
+
+// TestWebLogoutClearsAuthCookie covers server-side logout: it clears the
+// HttpOnly auth_token cookie, revokes the refresh session (401 on subsequent
+// refresh), and succeeds even when refresh_token is omitted.
+func TestWebLogoutClearsAuthCookie(t *testing.T) {
+	baseURL, _, cleanup := setupTestWeb(t)
+	defer cleanup()
+
+	base, err := url.Parse(baseURL)
+	if err != nil {
+		t.Fatalf("parse base url failed: %v", err)
+	}
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatalf("new cookie jar failed: %v", err)
+	}
+	httpClient := &http.Client{Timeout: time.Second * 5, Jar: jar}
+
+	status, _, body := doJSONRequestWithClient(t, httpClient, http.MethodPost, baseURL+"/api/auth/login", map[string]string{
+		"username": testAdminUsername,
+		"password": testAdminPassword,
+	}, nil)
+	if status != http.StatusOK {
+		t.Fatalf("login status = %d, want 200, body=%s", status, body)
+	}
+	tokens := parseAuthTokens(t, body)
+
+	status, _, body = doJSONRequestWithClient(t, httpClient, http.MethodGet, baseURL+"/api/admin/list", nil, nil)
+	if status != http.StatusOK {
+		t.Fatalf("cookie-authenticated admin list status = %d, want 200, body=%s", status, body)
+	}
+
+	status, header, body := doJSONRequestWithClient(t, httpClient, http.MethodPost, baseURL+"/api/auth/logout", map[string]string{
+		"refresh_token": tokens.RefreshToken,
+	}, nil)
+	if status != http.StatusOK {
+		t.Fatalf("logout status = %d, want 200, body=%s", status, body)
+	}
+	if cleared := authCookieFromHeader(header); cleared == nil || cleared.Value != "" || cleared.MaxAge > 0 {
+		t.Fatalf("logout did not clear the auth cookie, cookie=%+v", cleared)
+	}
+	for _, cookie := range jar.Cookies(base) {
+		if cookie.Name == servicedash.AuthTokenCookieName {
+			t.Fatalf("auth cookie survived logout: %+v", cookie)
+		}
+	}
+	status, _, body = doJSONRequestWithClient(t, httpClient, http.MethodGet, baseURL+"/api/admin/list", nil, nil)
+	if status != http.StatusUnauthorized {
+		t.Fatalf("post-logout admin list status = %d, want 401, body=%s", status, body)
+	}
+
+	// Logout revokes the refresh session as well, so the token handed in above
+	// cannot mint another access token (401 ADMIN_SESSION_ERROR_REVOKED).
+	status, _, body = doJSONRequestWithClient(t, httpClient, http.MethodPost, baseURL+"/api/auth/refresh", map[string]string{
+		"refresh_token": tokens.RefreshToken,
+	}, nil)
+	if status != http.StatusUnauthorized {
+		t.Fatalf("refresh after logout status = %d, want 401, body=%s", status, body)
+	}
+
+	// No refresh token at all: the cookie still has to go.
+	status, _, body = doJSONRequestWithClient(t, httpClient, http.MethodPost, baseURL+"/api/auth/login", map[string]string{
+		"username": testAdminUsername,
+		"password": testAdminPassword,
+	}, nil)
+	if status != http.StatusOK {
+		t.Fatalf("re-login status = %d, want 200, body=%s", status, body)
+	}
+	status, header, body = doJSONRequestWithClient(t, httpClient, http.MethodPost, baseURL+"/api/auth/logout", map[string]string{}, nil)
+	if status != http.StatusOK {
+		t.Fatalf("token-less logout status = %d, want 200, body=%s", status, body)
+	}
+	if cleared := authCookieFromHeader(header); cleared == nil || cleared.Value != "" || cleared.MaxAge > 0 {
+		t.Fatalf("token-less logout did not clear the auth cookie, cookie=%+v", cleared)
+	}
+}
+
+func authCookieFromHeader(header http.Header) *http.Cookie {
+	for _, cookie := range (&http.Response{Header: header}).Cookies() {
+		if cookie.Name == servicedash.AuthTokenCookieName {
+			return cookie
+		}
+	}
+	return nil
 }
 
 // TestWebLogin_PersistsSessionMetadata guards the hand-off between
@@ -486,6 +768,13 @@ func loginTokens(t *testing.T, baseURL, username, password string) authTokenData
 func doJSONRequest(t *testing.T, method, target string, payload any, headers map[string]string) (int, string) {
 	t.Helper()
 
+	status, _, body := doJSONRequestWithClient(t, &http.Client{Timeout: time.Second * 5}, method, target, payload, headers)
+	return status, body
+}
+
+func doJSONRequestWithClient(t *testing.T, client *http.Client, method, target string, payload any, headers map[string]string) (int, http.Header, string) {
+	t.Helper()
+
 	var body io.Reader
 	if payload != nil {
 		raw, err := json.Marshal(payload)
@@ -506,7 +795,7 @@ func doJSONRequest(t *testing.T, method, target string, payload any, headers map
 		req.Header.Set(k, v)
 	}
 
-	resp, err := (&http.Client{Timeout: time.Second * 5}).Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		t.Fatalf("do request failed: %v", err)
 	}
@@ -516,7 +805,7 @@ func doJSONRequest(t *testing.T, method, target string, payload any, headers map
 	if err != nil {
 		t.Fatalf("read response body failed: %v", err)
 	}
-	return resp.StatusCode, string(raw)
+	return resp.StatusCode, resp.Header, string(raw)
 }
 
 type authTokenData struct {
@@ -677,8 +966,8 @@ func TestWebValidationPaginationRateLimitAndExpiredSession(t *testing.T) {
 		status, body := doJSONRequest(t, http.MethodPost, baseURL+"/api/auth/refresh", map[string]string{
 			"refresh_token": tokens.RefreshToken,
 		}, nil)
-		if status != http.StatusForbidden {
-			t.Fatalf("expired refresh status = %d, want 403, body=%s", status, body)
+		if status != http.StatusUnauthorized {
+			t.Fatalf("expired refresh status = %d, want 401, body=%s", status, body)
 		}
 
 		reloaded, err := db.AdminSession.Get(t.Context(), sess.ID)
