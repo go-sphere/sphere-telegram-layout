@@ -1,5 +1,5 @@
 # module github.com/go-sphere/sphere-telegram-layout
-262c16456393394fd940ab82938e10ab5e6604ac36df2df2fa5768c551e8210d  api/bot/v1/menu.bot.pb.go
+e8944dd01c51c10c7549252051271a1c6d54f5ba40763e92e0c028a4198f40d9  api/bot/v1/menu.bot.pb.go
 c8251e4eb2dfab3d174c830d9c78207944a839b66fd6bfec900fe9e2637b1c75  api/bot/v1/menu.pb.go
 654f5437d88c7fedc2163c56f82400bc4cbd08bea5d5300307c4363a5d6c8ae6  api/dash/v1/admin.errors.pb.go
 7b24781c2aa85f1248fed2f2f9e7421c63dfa2357593d8498d323607c3aeef92  api/dash/v1/admin.pb.go
@@ -19,4 +19,4 @@ b182044247eefa51ec8b5695b8ab06546e4ebc641dde0da15988a6fe836f5cdd  api/shared/v1/
 ca37e19acad1281a4e039919c36a97c7da7fc9f9c0e935df92773fd1344610f6  api/shared/v1/storage.sphere.pb.go
 cb9307d7f8cec8640b1aadf6b9dcb7540600b443b3a96858c8b624c068840c2e  api/shared/v1/test.errors.pb.go
 0c37fa60dd3947706859c79f26cf313613921413149e88239017dd4c034bd826  api/shared/v1/test.pb.go
-a6f5eda6d358ff4d83f26b4b0c443819db0d9ce78bb290b00c1bd32f0386aa7e  api/shared/v1/test.sphere.pb.go
+49003840413a60ec67417937ab7cd3700b03d6021b834bd8410a6b2940aba368  api/shared/v1/test.sphere.pb.go
