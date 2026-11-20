@@ -205,6 +205,10 @@ disables the limit.
   `X-Forwarded-For` header is honoured. Set it when the service runs behind a
   proxy: otherwise every client, and every per-IP rate limit, shares the
   proxy's address. An invalid entry fails configuration loading.
+- `trust_request_id` (default false) keeps a well-formed `X-Request-ID` sent
+  by the caller instead of generating one. Enable it only behind a gateway that
+  sets the header: a client that reaches the server directly otherwise chooses
+  the ID that appears in the logs.
 
 ## Upgrade Notes
 
@@ -231,6 +235,13 @@ Changes in the sphere v0.0.7 sync:
 
 Template changes after the stdx migration:
 
+- `httpsrv.NewServer` registers sphere's standard engine middleware with
+  `stack.Apply` (`server/middleware/stack`): request ID, access log, panic
+  recovery, in that order. Every response now carries `X-Request-ID`, and
+  access and panic log entries carry `request_id`. The ID is generated per
+  request; see `trust_request_id` under HTTP Server Limits. A browser on
+  another origin reads the header only if `UseCORS` also sets
+  `cors.WithExposeHeaders`.
 - `internal/pkg/httpsrv` sets read and idle timeouts, a request body cap and
   trusted proxies from `httpsrv.Options` (see HTTP Server Limits), and
   `NewServer(name, addr, opts)` takes it as a third argument.

@@ -4,7 +4,8 @@ import (
 	"github.com/go-sphere/httpx"
 	"github.com/go-sphere/sphere/log"
 	"github.com/go-sphere/sphere/server/middleware/cors"
-	"github.com/go-sphere/sphere/server/middleware/logger"
+	"github.com/go-sphere/sphere/server/middleware/requestid"
+	"github.com/go-sphere/sphere/server/middleware/stack"
 )
 
 // UseCORS attaches CORS middleware when origins is non-empty. Like the access
@@ -27,6 +28,12 @@ func UseCORS(engine httpx.Engine, origins []string) error {
 // opts sets the timeouts, request body cap and trusted proxies; see Options.
 // NewServer panics on an invalid trusted proxy, which Options.Validate reports.
 //
+// The engine-level middleware is sphere's standard stack (request ID, access
+// log, panic recovery, in that order; see server/middleware/stack), so every
+// response carries X-Request-ID and the log entries carry request_id. The ID
+// is generated per request unless Options.TrustRequestID keeps a well-formed
+// one sent by the caller.
+//
 // The engine is the stdx adapter over plain net/http: it owns the *http.Server
 // and implements httpx.TestRequester directly, so no wrapper is needed for
 // in-process tests or for Stop. Engine.Stop drains with Shutdown and
@@ -38,6 +45,13 @@ func NewServer(name, addr string, opts Options) httpx.Engine {
 	// Engine scope rather than a group's: engine middleware also covers the
 	// paths no route matched, and the access log and panic recovery must cover
 	// 404s too.
-	engine.Use(logger.Log(lg), logger.RecoveryLog(lg, true))
+	stackOpts := []stack.Option{stack.WithLogger(lg)}
+	if !opts.TrustRequestID {
+		stackOpts = append(stackOpts, stack.WithRequestID(requestid.WithAlwaysGenerate()))
+	}
+	if err := stack.Apply(engine, stackOpts...); err != nil {
+		// Only creating metric instruments can fail, and none are enabled here.
+		panic(err)
+	}
 	return engine
 }

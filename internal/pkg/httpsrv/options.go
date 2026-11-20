@@ -50,6 +50,12 @@ type Options struct {
 	// and reports the peer address, so behind a proxy every client — and every
 	// per-IP rate limit — collapses onto the proxy's address until it is set.
 	TrustedProxies []string `json:"trusted_proxies" yaml:"trusted_proxies"`
+	// TrustRequestID keeps an X-Request-ID sent by the caller when it is well
+	// formed (at most 64 characters of [A-Za-z0-9._-]) instead of generating
+	// one. Enable it only behind a gateway that sets the header itself: any
+	// client that reaches the server directly then chooses the ID that appears
+	// in the logs.
+	TrustRequestID bool `json:"trust_request_id" yaml:"trust_request_id"`
 }
 
 // Validate reports an entry of TrustedProxies that is neither an IP nor a

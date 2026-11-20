@@ -14,6 +14,7 @@ import (
 	"github.com/go-sphere/sphere/log"
 	"github.com/go-sphere/sphere/log/logbuffer"
 	"github.com/go-sphere/sphere/server/httpz"
+	"github.com/go-sphere/sphere/server/middleware/requestid"
 )
 
 func registerAcceptanceRoutes(r httpx.Router) {
@@ -210,4 +211,52 @@ func TestServerStopForceClosesHungRequest(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Fatal("Start did not return after Stop")
 	}
+}
+
+func TestServerAssignsRequestID(t *testing.T) {
+	buf := logbuffer.New(32)
+	log.InitWithBackends(buf)
+	t.Cleanup(func() {
+		log.InitWithBackends(log.NewStdioBackend())
+	})
+	// No route is registered: the engine-level stack must cover a 404 too.
+	send := func(opts Options, id string) string {
+		t.Helper()
+		engine := NewServer("test", "127.0.0.1:0", opts)
+		tr, ok := httpx.AsTestRequester(engine)
+		if !ok {
+			t.Fatalf("engine %T does not support in-process test requests", engine)
+		}
+		req := httptest.NewRequest(http.MethodGet, "http://example.com/missing", nil)
+		req.Header.Set(requestid.DefaultHeader, id)
+		resp, err := tr.Do(req)
+		if err != nil {
+			t.Fatalf("request failed: %v", err)
+		}
+		defer func() { _ = resp.Body.Close() }()
+		if resp.StatusCode != http.StatusNotFound {
+			t.Fatalf("status = %d, want 404", resp.StatusCode)
+		}
+		return resp.Header.Get(requestid.DefaultHeader)
+	}
+
+	generated := send(Options{}, "client-id.1")
+	if generated == "" || generated == "client-id.1" {
+		t.Fatalf("default: response header = %q, want a generated ID", generated)
+	}
+	trusted := Options{TrustRequestID: true}
+	if got := send(trusted, "client-id.1"); got != "client-id.1" {
+		t.Fatalf("TrustRequestID: response header = %q, want the caller's ID kept", got)
+	}
+	if got := send(trusted, "not a valid id"); got == "" || got == "not a valid id" {
+		t.Fatalf("TrustRequestID with a malformed ID: response header = %q, want a generated ID", got)
+	}
+
+	entries, _ := buf.History(0, 8, log.LevelDebug)
+	for _, entry := range entries {
+		if entry.Message == "/missing" && entry.Attrs["request_id"] == generated {
+			return
+		}
+	}
+	t.Fatalf("access log entry with request_id %q missing from buffer: %+v", generated, entries)
 }
